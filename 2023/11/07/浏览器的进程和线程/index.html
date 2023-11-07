@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基本概念进程是CPU资源分配的最小单位，线程是CPU调度的最小单位。 进程有单独的属于自己的内存空间，一个进程由一个或多个线程组成，线程是一个进程中代码的不同执行路线。一个进程的内存空间是共享的，每个线程都可用这些共享内存。 翻译翻译： 如果把进程比作工厂的话，线程就是工厂的工人，工厂有单独的专属于自己的工厂资源，工人可以共享工厂资源。 多进程的好处在同一个时间内，同一个计算机系统中允许两个或两个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浏览器的进程和线程">
+<meta property="og:url" content="http://example.com/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="基本概念进程是CPU资源分配的最小单位，线程是CPU调度的最小单位。 进程有单独的属于自己的内存空间，一个进程由一个或多个线程组成，线程是一个进程中代码的不同执行路线。一个进程的内存空间是共享的，每个线程都可用这些共享内存。 翻译翻译： 如果把进程比作工厂的话，线程就是工厂的工人，工厂有单独的专属于自己的工厂资源，工人可以共享工厂资源。 多进程的好处在同一个时间内，同一个计算机系统中允许两个或两个">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%BF%9B%E7%A8%8B.png">
+<meta property="article:published_time" content="2023-11-07T03:36:00.767Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.767Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="进程">
+<meta property="article:tag" content="线程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%BF%9B%E7%A8%8B.png">
+
+<link rel="canonical" href="http://example.com/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>浏览器的进程和线程 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          浏览器的进程和线程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B5%8F%E8%A7%88%E5%99%A8/" itemprop="url" rel="index"><span itemprop="name">浏览器</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/" class="post-meta-item leancloud_visitors" data-flag-title="浏览器的进程和线程" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><p>进程是CPU资源分配的最小单位，线程是CPU调度的最小单位。</p>
+<p>进程有单独的属于自己的内存空间，一个进程由一个或多个线程组成，线程是一个进程中代码的不同执行路线。一个进程的内存空间是共享的，每个线程都可用这些共享内存。</p>
+<p>翻译翻译：</p>
+<p>如果把进程比作工厂的话，线程就是工厂的工人，工厂有单独的专属于自己的工厂资源，工人可以共享工厂资源。</p>
+<h4 id="多进程的好处"><a href="#多进程的好处" class="headerlink" title="多进程的好处"></a>多进程的好处</h4><p>在同一个时间内，同一个计算机系统中允许两个或两个以上的进行处于运行状态，进程之间丝毫不会互相干扰，可以同时做多个事情。</p>
+<h4 id="多线程的好处"><a href="#多线程的好处" class="headerlink" title="多线程的好处"></a>多线程的好处</h4><p>程序中包含多个执行流，即在同一个程序中可以同时运行多个不同的线程来执行不同的任务，也就是说允许单个程序创建多个并行执行的线程来完成各自的任务。</p>
+<h4 id="常见进程"><a href="#常见进程" class="headerlink" title="常见进程"></a>常见进程</h4><p>以chrome浏览器为例，来分析一下浏览器的进程。</p>
+<p><img src="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%BF%9B%E7%A8%8B.png" alt="img"></p>
+<p>上图是浏览器只打开一个百度的标签页时，任务管理器的状态。主要可以关注以下几个进程。</p>
+<ol>
+<li>浏览器进程：负责协调、主控其他进程。<ul>
+<li>负责各个页面的管理，创建和销毁其他进程；</li>
+<li>负责浏览器界面显示与用户交互，如前进、后退等；</li>
+</ul>
+</li>
+<li>GPU进程：使用初衷是为了实现3D CSS的效果，后面随着网页、Chrome的UI界面都选择用GPU来绘制，使得GPU成为了浏览器普遍的需求。</li>
+<li>Network Service：网络进程，主要负责页面的网络资源加载，之前是作为一个模块运行在浏览器进程里面。</li>
+<li>Storage Service：控制文件读写的存储线程；</li>
+<li>Audio Service：音频进程；</li>
+<li>渲染进程：核心任务是将HTML、CSS和javascript转换为用户可以与之交互的网页，排版引擎Blink和javascript引擎V8都是运行在该进程中。默认情况下，Chrome会为每个Tab标签创建一个渲染进程，当进程数达到一定的界限后，Chrome会将访问同一个网站的tab都放在一个进程里面跑。处于安全考虑，渲染进程都是运行在沙箱模式下。渲染进程中主要包含以下线程：<ul>
+<li>主线程 Main thread：对几个常驻线程的调用，执行大多数的代码。</li>
+<li>工作线程 Worker thread：web worker和service worker相关的代码由该进程处理。</li>
+<li>光栅线程 Raster thread：将文档结构、元素的样式、元素的几何位置以及绘画顺序这些信息转化为显示器的像素的过程叫做光栅化。</li>
+<li>合成线程 Compositor thread：将页面分成若干层，分别进行光栅化，光栅化之前合成线程需要将页面的一层切分成一块又一块小图块，光栅线程会栅格化每个图块并将它们储存在GPU的内存中。最后在合成线程中合并成一个页面。当页面的层超过一定的数量后，层的合成操作要比每个帧中光栅化页面的一小部分还要慢。</li>
+</ul>
+</li>
+<li>插件进程：虽然图上没有，也可以了解一下。主要负责插件的运行，用来保证插件进程崩溃不会对浏览器和页面造成影响。</li>
+</ol>
+<p>⚠️Network Service、Storage Service和Audio Service这些服务本来是在浏览器进程里面的，后来将这些模块拆分为了一个个不同的服务，这个过程也叫做Chrome服务化。服务化之后，这些功能既可以放在不同的进程里运行，也可以合并为一个单独的进程运行。</p>
+<p>这样做主要是为了让Chrome在不同性能的硬件上有不同的表现。当Chrome运行在一些性能比较好的硬件时，浏览器进程香港的服务会放在不同的进程中运行来提高系统的稳定性。如果硬件性能不好，这些服务就被放在同一个进程里面执行来减少内存的占用。</p>
+<h4 id="渲染进程中的线程"><a href="#渲染进程中的线程" class="headerlink" title="渲染进程中的线程"></a>渲染进程中的线程</h4><p>渲染进程也称为浏览器内核，浏览器内核通过取得页面内容，整理信息、计算组合最终输出可视化的图像结果，通常也被称为渲染引擎。</p>
+<p>浏览器内核是多线程，在内核控制下各个线程相互配合，一个浏览器通常由以下常驻线程组成：</p>
+<ul>
+<li>GUI渲染线程（有且只有一个）</li>
+<li>JavaScript引擎线程（有且只有一个）</li>
+<li>定时触发器线程（多个）</li>
+<li>事件触发线程</li>
+<li>异步http请求线程（多个）</li>
+</ul>
+<h5 id="GUI渲染线程"><a href="#GUI渲染线程" class="headerlink" title="GUI渲染线程"></a>GUI渲染线程</h5><p>主要负责页面的渲染，解析HTML、CSS，构建DOM树，布局和绘制等。当界面需要重绘或重排时，会执行该线程。</p>
+<p>⚠️渲染线程跟JS引擎线程互斥，当执行JS引擎线程时，GUI渲染会被挂起。当任务队列空闲时，才会执行GUI渲染。互斥的原因是因为，JS是可以操作DOM的，边操作边渲染会出现问题，js被设计成单线程也是这个原因。</p>
+<h5 id="JS引擎线程"><a href="#JS引擎线程" class="headerlink" title="JS引擎线程"></a>JS引擎线程</h5><p>同步任务和异步任务都由该线程执行。如果JS引擎执行脚本的时间过长，将导致页面渲染阻塞。</p>
+<h5 id="定时器触发线程"><a href="#定时器触发线程" class="headerlink" title="定时器触发线程"></a>定时器触发线程</h5><p>主要负责执行异步定时器一类的函数，如setTimeOut、setInterval。主线程按顺序执行代码时，遇见定时器，会将定时器交给该线程处理。当计时完毕后，通过事件触发线程将技术完毕后的事件加入到任务队列的尾部，等待JS引擎线程执行。</p>
+<h5 id="事件触发线程"><a href="#事件触发线程" class="headerlink" title="事件触发线程"></a>事件触发线程</h5><p>主要负责将准备好的事件交给JS引擎线程执行。也就是将已经准备好的异步回调函数添加到任务队列的队尾。</p>
+<h5 id="异步http请求线程"><a href="#异步http请求线程" class="headerlink" title="异步http请求线程"></a>异步http请求线程</h5><p>负责执行异步请求一类的函数，如： Promise、axios、ajax等。主线程按顺序执行代码时，遇到异步请求，会将函数交给该线程处理。当监听到状态码变更，如果有回调函数，事件触发线程将回调函数加入到任务队列的尾部，等待JS引擎线程执行。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%BF%9B%E7%A8%8B/" rel="tag"># 进程</a>
+              <a href="/tags/%E7%BA%BF%E7%A8%8B/" rel="tag"># 线程</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/" rel="prev" title="手写一个简版Webpack">
+      <i class="fa fa-chevron-left"></i> 手写一个简版Webpack
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/" rel="next" title="浏览器的事件循环机制">
+      浏览器的事件循环机制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%A5%BD%E5%A4%84"><span class="nav-number">2.</span> <span class="nav-text">多进程的好处</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%A5%BD%E5%A4%84"><span class="nav-number">3.</span> <span class="nav-text">多线程的好处</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E8%BF%9B%E7%A8%8B"><span class="nav-number">4.</span> <span class="nav-text">常见进程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B8%B2%E6%9F%93%E8%BF%9B%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.</span> <span class="nav-text">渲染进程中的线程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#GUI%E6%B8%B2%E6%9F%93%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.1.</span> <span class="nav-text">GUI渲染线程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JS%E5%BC%95%E6%93%8E%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.2.</span> <span class="nav-text">JS引擎线程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E8%A7%A6%E5%8F%91%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.3.</span> <span class="nav-text">定时器触发线程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.4.</span> <span class="nav-text">事件触发线程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5http%E8%AF%B7%E6%B1%82%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.5.</span> <span class="nav-text">异步http请求线程</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

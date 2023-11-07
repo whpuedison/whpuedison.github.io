@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="父-&gt;子方式父组件通过属性的方式给子组件传值，子组件通过props来接受父组件的值。 注意 如果传递的是个对象的话，只改变下面的某个属性子组件中是不会响应式更新的，如果子组件需要在数据变化时响应式更新，可以用watch深拷贝deep:true监听到变化；  如果你传进来的是个对象，同时你又需要在子组件中操作传进来的这个数据，那么在父组件中的这个数据也会改变，因为传递的只是个引用，可通过将对象">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vue2.x的组件通信">
+<meta property="og:url" content="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="父-&gt;子方式父组件通过属性的方式给子组件传值，子组件通过props来接受父组件的值。 注意 如果传递的是个对象的话，只改变下面的某个属性子组件中是不会响应式更新的，如果子组件需要在数据变化时响应式更新，可以用watch深拷贝deep:true监听到变化；  如果你传进来的是个对象，同时你又需要在子组件中操作传进来的这个数据，那么在父组件中的这个数据也会改变，因为传递的只是个引用，可通过将对象">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.762Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.762Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="组件通信">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Vue2.x的组件通信 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Vue2.x的组件通信
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/vue/" itemprop="url" rel="index"><span itemprop="name">vue</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/Vue2.x%E7%9A%84%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/" class="post-meta-item leancloud_visitors" data-flag-title="Vue2.x的组件通信" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/Vue2.x%E7%9A%84%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/Vue2.x%E7%9A%84%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="父-gt-子"><a href="#父-gt-子" class="headerlink" title="父-&gt;子"></a>父-&gt;子</h4><h5 id="方式"><a href="#方式" class="headerlink" title="方式"></a>方式</h5><p>父组件通过属性的方式给子组件传值，子组件通过props来接受父组件的值。</p>
+<h5 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h5><ol>
+<li><p>如果传递的是个对象的话，只改变下面的某个属性子组件中是不会响应式更新的，如果子组件需要在数据变化时响应式更新，可以用watch深拷贝deep:true监听到变化；</p>
+</li>
+<li><p>如果你传进来的是个对象，同时你又需要在子组件中操作传进来的这个数据，那么在父组件中的这个数据也会改变，因为传递的只是个引用，可通过将对象做深拷贝创建一个副本解决这个问题。</p>
+</li>
+</ol>
+<h5 id="可以但不建议的操作"><a href="#可以但不建议的操作" class="headerlink" title="可以但不建议的操作"></a>可以但不建议的操作</h5><ol>
+<li><p>直接用ref调用子组件函数直接把数据以参数的形式传给子组件；</p>
+</li>
+<li><p>$children是一个数组，是直接儿子的集合，不保证顺序，也不是响应式。</p>
+</li>
+</ol>
+<h4 id="子-gt-父"><a href="#子-gt-父" class="headerlink" title="子-&gt;父"></a>子-&gt;父</h4><h5 id="方式-1"><a href="#方式-1" class="headerlink" title="方式"></a>方式</h5><p>子组件通过$emit的操作触发父组件的自定义事件，父组件中监听这个事件并在回调中写相关逻辑。</p>
+<h5 id="可以但不建议的操作-1"><a href="#可以但不建议的操作-1" class="headerlink" title="可以但不建议的操作"></a>可以但不建议的操作</h5><ol>
+<li><p>可以在子组件中定义一种专供父组件调用的函数，当父组件想要获取子组件数据就直接主动调用ref执行这个函数获取数据；</p>
+</li>
+<li><p>$parent是当前组件树的根 Vue 实例，如果当前实例没有父实例，此实例将会是其自己。</p>
+</li>
+</ol>
+<h4 id="兄-gt-弟"><a href="#兄-gt-弟" class="headerlink" title="兄-&gt;弟"></a>兄-&gt;弟</h4><h5 id="方式-2"><a href="#方式-2" class="headerlink" title="方式"></a>方式</h5><ol>
+<li><p>路由URL参数：把需要跨页面传递的数据放到url后面，跳转到另外页面时获取url字符串获取想要的参数即可。局限性：只适合传递比较小的数据。</p>
+</li>
+<li><p>EventBus：在组件之外定义一个event-bus.js作为组件间通信的桥梁，也可称之为事件总线。EventBus实现了发布订阅模式，往事件总线里订阅事件用的是on，发布事件用的是emit。</p>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">// event-bus.js</span><br><span class="line">import Vue from &#x27;vue&#x27;</span><br><span class="line">export const EventBus = new Vue()</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="祖先-gt-后代"><a href="#祖先-gt-后代" class="headerlink" title="祖先-&gt;后代"></a>祖先-&gt;后代</h4><h5 id="方式-3"><a href="#方式-3" class="headerlink" title="方式"></a>方式</h5><ol>
+<li><p>provide/inject，允许一个祖先组件向其所有子孙后代注入一个依赖，不论组件层次有多深，并在起上下游关系成立的时间里始终生效。</p>
+</li>
+<li><p>$attrs：在子组件中添加v-bind=’$​attrs’，就把父组件传来的子组件没props接收的数据全部传到孙组件，子组件和孙组件都可以用this.$attrs获取。</p>
+</li>
+</ol>
+<h5 id="注意-1"><a href="#注意-1" class="headerlink" title="注意"></a>注意</h5><p>provide 和 inject 绑定并不是可响应的。如果数据类型是对象Object，其对象的属性还是可响应的，因为对象格式数据存储的是指针而不是数据，操作的是同一个对象。</p>
+<h4 id="通用"><a href="#通用" class="headerlink" title="通用"></a>通用</h4><h5 id="方式-4"><a href="#方式-4" class="headerlink" title="方式"></a>方式</h5><p>1.Vuex集中状态管理：类似与一个共享数据仓库，所有的组件都可以去操作；</p>
+<p>2.localStorage，sessionStorage，cooikes之类的存在本地也能做到组件间的通信。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%BB%84%E4%BB%B6%E9%80%9A%E4%BF%A1/" rel="tag"># 组件通信</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84%E7%BC%96%E8%AF%91%E8%BF%87%E7%A8%8B/" rel="prev" title="Vue2.x的编译过程">
+      <i class="fa fa-chevron-left"></i> Vue2.x的编译过程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/" rel="next" title="Vue2.x的渲染过程">
+      Vue2.x的渲染过程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%88%B6-gt-%E5%AD%90"><span class="nav-number">1.</span> <span class="nav-text">父-&gt;子</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F"><span class="nav-number">1.1.</span> <span class="nav-text">方式</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F"><span class="nav-number">1.2.</span> <span class="nav-text">注意</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%8F%AF%E4%BB%A5%E4%BD%86%E4%B8%8D%E5%BB%BA%E8%AE%AE%E7%9A%84%E6%93%8D%E4%BD%9C"><span class="nav-number">1.3.</span> <span class="nav-text">可以但不建议的操作</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AD%90-gt-%E7%88%B6"><span class="nav-number">2.</span> <span class="nav-text">子-&gt;父</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F-1"><span class="nav-number">2.1.</span> <span class="nav-text">方式</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%8F%AF%E4%BB%A5%E4%BD%86%E4%B8%8D%E5%BB%BA%E8%AE%AE%E7%9A%84%E6%93%8D%E4%BD%9C-1"><span class="nav-number">2.2.</span> <span class="nav-text">可以但不建议的操作</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%84-gt-%E5%BC%9F"><span class="nav-number">3.</span> <span class="nav-text">兄-&gt;弟</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F-2"><span class="nav-number">3.1.</span> <span class="nav-text">方式</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%A5%96%E5%85%88-gt-%E5%90%8E%E4%BB%A3"><span class="nav-number">4.</span> <span class="nav-text">祖先-&gt;后代</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F-3"><span class="nav-number">4.1.</span> <span class="nav-text">方式</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F-1"><span class="nav-number">4.2.</span> <span class="nav-text">注意</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%80%9A%E7%94%A8"><span class="nav-number">5.</span> <span class="nav-text">通用</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F-4"><span class="nav-number">5.1.</span> <span class="nav-text">方式</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

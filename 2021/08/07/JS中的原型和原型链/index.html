@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="原型每一个javascript对象（null除外）在创建的时候，都会与另外一个对象所关联。而这个与创建对象所关联的对象，就是所创建对象的原型，每一个对象都会从原型中继承属性。 构造函数、原型、实例的关系图 为什么原型没有属性指向实例？因为一个构造函数可以创建多个实例对象，原型与实例对象是一对多的关系，所以就没法用一个属性指向实例。 原型链当读取实例的属性时，如果找不到就会去查找与对象关联的原型中的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JS中的原型和原型链">
+<meta property="og:url" content="http://example.com/2021/08/07/JS%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%9E%8B%E5%92%8C%E5%8E%9F%E5%9E%8B%E9%93%BE/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="原型每一个javascript对象（null除外）在创建的时候，都会与另外一个对象所关联。而这个与创建对象所关联的对象，就是所创建对象的原型，每一个对象都会从原型中继承属性。 构造函数、原型、实例的关系图 为什么原型没有属性指向实例？因为一个构造函数可以创建多个实例对象，原型与实例对象是一对多的关系，所以就没法用一个属性指向实例。 原型链当读取实例的属性时，如果找不到就会去查找与对象关联的原型中的">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E5%8E%9F%E5%9E%8B%E5%9B%BE.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E5%8E%9F%E5%9E%8B%E9%93%BE.png">
+<meta property="article:published_time" content="2021-08-06T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.758Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="原型">
+<meta property="article:tag" content="原型链">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E5%8E%9F%E5%9E%8B%E5%9B%BE.png">
+
+<link rel="canonical" href="http://example.com/2021/08/07/JS%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%9E%8B%E5%92%8C%E5%8E%9F%E5%9E%8B%E9%93%BE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>JS中的原型和原型链 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/08/07/JS%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%9E%8B%E5%92%8C%E5%8E%9F%E5%9E%8B%E9%93%BE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          JS中的原型和原型链
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-08-07 00:00:00" itemprop="dateCreated datePublished" datetime="2021-08-07T00:00:00+08:00">2021-08-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2023-11-07 11:36:00" itemprop="dateModified" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/javascript/" itemprop="url" rel="index"><span itemprop="name">javascript</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2021/08/07/JS%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%9E%8B%E5%92%8C%E5%8E%9F%E5%9E%8B%E9%93%BE/" class="post-meta-item leancloud_visitors" data-flag-title="JS中的原型和原型链" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2021/08/07/JS%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%9E%8B%E5%92%8C%E5%8E%9F%E5%9E%8B%E9%93%BE/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2021/08/07/JS%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%9E%8B%E5%92%8C%E5%8E%9F%E5%9E%8B%E9%93%BE/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="原型"><a href="#原型" class="headerlink" title="原型"></a>原型</h3><p>每一个javascript对象（null除外）在创建的时候，都会与另外一个对象所关联。而这个与创建对象所关联的对象，就是所创建对象的原型，每一个对象都会从原型中继承属性。</p>
+<h4 id="构造函数、原型、实例的关系图"><a href="#构造函数、原型、实例的关系图" class="headerlink" title="构造函数、原型、实例的关系图"></a>构造函数、原型、实例的关系图</h4><p><img src="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E5%8E%9F%E5%9E%8B%E5%9B%BE.png"></p>
+<h4 id="为什么原型没有属性指向实例？"><a href="#为什么原型没有属性指向实例？" class="headerlink" title="为什么原型没有属性指向实例？"></a>为什么原型没有属性指向实例？</h4><p>因为一个构造函数可以创建多个实例对象，原型与实例对象是一对多的关系，所以就没法用一个属性指向实例。</p>
+<h3 id="原型链"><a href="#原型链" class="headerlink" title="原型链"></a>原型链</h3><p>当读取实例的属性时，如果找不到就会去查找与对象关联的原型中的属性，如果还找不到，就去找原型的原型，一直找到最顶层为止，这样由原型组成的链状结构就是原型链。</p>
+<h4 id="原型链的尽头"><a href="#原型链的尽头" class="headerlink" title="原型链的尽头"></a>原型链的尽头</h4><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="title class_">Object</span>.<span class="property"><span class="keyword">prototype</span></span>.<span class="property">__proto__</span> === <span class="literal">null</span>) <span class="comment">// true</span></span><br></pre></td></tr></table></figure>
+
+<p> Object.prototype.<strong>proto</strong> 的值为 null 跟 Object.prototype 没有原型，其实表达了一个意思，所以查找属性到了 Object.prototype就可以停止查找了。</p>
+<h4 id="原型链关系图"><a href="#原型链关系图" class="headerlink" title="原型链关系图"></a>原型链关系图</h4><p><img src="https://raw.githubusercontent.com/whpuEdison/blog/master/static/images/%E5%8E%9F%E5%9E%8B%E9%93%BE.png"></p>
+<p>图中由相互关联的原型组成的链状结构就是原型链，也就是蓝色的这条线。</p>
+<h3 id="几个常见小问题"><a href="#几个常见小问题" class="headerlink" title="几个常见小问题"></a>几个常见小问题</h3><h4 id="实例的constructor属性指向构造函数吗？"><a href="#实例的constructor属性指向构造函数吗？" class="headerlink" title="实例的constructor属性指向构造函数吗？"></a>实例的constructor属性指向构造函数吗？</h4><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> <span class="title function_">Person</span>(<span class="params"></span>) &#123;&#125;</span><br><span class="line"><span class="keyword">var</span> person = <span class="keyword">new</span> <span class="title class_">Person</span>();</span><br><span class="line"><span class="variable language_">console</span>.<span class="title function_">log</span>(person.<span class="property">constructor</span> === <span class="title class_">Person</span>); <span class="comment">// true</span></span><br></pre></td></tr></table></figure>
+
+<p>当获取person的constructor属性时，其实 person 中并没有 constructor 属性，当不能读取到constructor 属性时，会从 person 的原型也就是 Person.prototype 中读取，正好原型中有该属性。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">person.<span class="property">constructor</span> === <span class="title class_">Person</span>.<span class="property"><span class="keyword">prototype</span></span>.<span class="property">constructor</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="怎么理解-proto-属性？"><a href="#怎么理解-proto-属性？" class="headerlink" title="怎么理解__proto__属性？"></a>怎么理解__proto__属性？</h4><p>绝大多数浏览器都支持这个非标准的方法访问原型，然而它并不存在于Person.prototype中，实际上它是来自于 Object.prototype。与其说是一个属性，不如说是一个getter/setter，当使用 obj.<strong>proto</strong> 时，可以理解成返回了 Object.getPrototypeOf(obj)。</p>
+<h4 id="真的是从原型上“继承”属性吗？"><a href="#真的是从原型上“继承”属性吗？" class="headerlink" title="真的是从原型上“继承”属性吗？"></a>真的是从原型上“继承”属性吗？</h4><p>继承意味着复制操作，然而 JavaScript 默认并不会复制对象的属性。相反，JavaScript 只是在两个对象之间创建一个关联，这样，一个对象就可以通过委托访问另一个对象的属性和函数，所以与其叫继承，委托的说法反而更准确些。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%8E%9F%E5%9E%8B/" rel="tag"># 原型</a>
+              <a href="/tags/%E5%8E%9F%E5%9E%8B%E9%93%BE/" rel="tag"># 原型链</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/08/05/typeof%E5%92%8Cinstanceof%E5%8C%BA%E5%88%AB/" rel="prev" title="typeof和instanceof区别">
+      <i class="fa fa-chevron-left"></i> typeof和instanceof区别
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/08/08/%E8%AF%8D%E6%B3%95%E4%BD%9C%E7%94%A8%E5%9F%9F%E5%92%8C%E5%8A%A8%E6%80%81%E4%BD%9C%E7%94%A8%E5%9F%9F/" rel="next" title="词法作用域和动态作用域">
+      词法作用域和动态作用域 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%9F%E5%9E%8B"><span class="nav-number">1.</span> <span class="nav-text">原型</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E3%80%81%E5%8E%9F%E5%9E%8B%E3%80%81%E5%AE%9E%E4%BE%8B%E7%9A%84%E5%85%B3%E7%B3%BB%E5%9B%BE"><span class="nav-number">1.1.</span> <span class="nav-text">构造函数、原型、实例的关系图</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8E%9F%E5%9E%8B%E6%B2%A1%E6%9C%89%E5%B1%9E%E6%80%A7%E6%8C%87%E5%90%91%E5%AE%9E%E4%BE%8B%EF%BC%9F"><span class="nav-number">1.2.</span> <span class="nav-text">为什么原型没有属性指向实例？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%9F%E5%9E%8B%E9%93%BE"><span class="nav-number">2.</span> <span class="nav-text">原型链</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8E%9F%E5%9E%8B%E9%93%BE%E7%9A%84%E5%B0%BD%E5%A4%B4"><span class="nav-number">2.1.</span> <span class="nav-text">原型链的尽头</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8E%9F%E5%9E%8B%E9%93%BE%E5%85%B3%E7%B3%BB%E5%9B%BE"><span class="nav-number">2.2.</span> <span class="nav-text">原型链关系图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%A0%E4%B8%AA%E5%B8%B8%E8%A7%81%E5%B0%8F%E9%97%AE%E9%A2%98"><span class="nav-number">3.</span> <span class="nav-text">几个常见小问题</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B%E7%9A%84constructor%E5%B1%9E%E6%80%A7%E6%8C%87%E5%90%91%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E5%90%97%EF%BC%9F"><span class="nav-number">3.1.</span> <span class="nav-text">实例的constructor属性指向构造函数吗？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%80%8E%E4%B9%88%E7%90%86%E8%A7%A3-proto-%E5%B1%9E%E6%80%A7%EF%BC%9F"><span class="nav-number">3.2.</span> <span class="nav-text">怎么理解__proto__属性？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%9C%9F%E7%9A%84%E6%98%AF%E4%BB%8E%E5%8E%9F%E5%9E%8B%E4%B8%8A%E2%80%9C%E7%BB%A7%E6%89%BF%E2%80%9D%E5%B1%9E%E6%80%A7%E5%90%97%EF%BC%9F"><span class="nav-number">3.3.</span> <span class="nav-text">真的是从原型上“继承”属性吗？</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

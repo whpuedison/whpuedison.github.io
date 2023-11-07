@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基本概念Vue是一个实现了数据驱动的框架， 当数据改变的时候，需要通知到依赖这个数据的订阅者watcher。将数据和依赖数据的订阅者watcher联系起来的过程，称为依赖收集。 收集过程一般来讲，数据的订阅者watcher常见的类型有如下3种：  computed watcher user watcher render watcher  不同类型的watcher完成依赖收集是有顺序的，比如上面提到">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vue2.x的依赖收集">
+<meta property="og:url" content="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="基本概念Vue是一个实现了数据驱动的框架， 当数据改变的时候，需要通知到依赖这个数据的订阅者watcher。将数据和依赖数据的订阅者watcher联系起来的过程，称为依赖收集。 收集过程一般来讲，数据的订阅者watcher常见的类型有如下3种：  computed watcher user watcher render watcher  不同类型的watcher完成依赖收集是有顺序的，比如上面提到">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.761Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.761Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="依赖收集">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Vue2.x的依赖收集 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Vue2.x的依赖收集
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/vue/" itemprop="url" rel="index"><span itemprop="name">vue</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/" class="post-meta-item leancloud_visitors" data-flag-title="Vue2.x的依赖收集" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><p>Vue是一个实现了数据驱动的框架， 当数据改变的时候，需要通知到依赖这个数据的订阅者watcher。将数据和依赖数据的订阅者watcher联系起来的过程，称为依赖收集。</p>
+<h4 id="收集过程"><a href="#收集过程" class="headerlink" title="收集过程"></a>收集过程</h4><p>一般来讲，数据的订阅者watcher常见的类型有如下3种：</p>
+<ol>
+<li>computed watcher</li>
+<li>user watcher</li>
+<li>render watcher</li>
+</ol>
+<p>不同类型的watcher完成依赖收集是有顺序的，比如上面提到的3种类型watcher执行顺序就是：computed watcher -&gt; user watcher -&gt; render watcher。</p>
+<p>下面按顺序来分析3种watcher完成依赖收集的过程：</p>
+<h5 id="computed-watcher"><a href="#computed-watcher" class="headerlink" title="computed watcher"></a>computed watcher</h5><p>在初始化数据的时候，如果组件中有使用computed计算属性，会执行initComputed方法，一个computed属性对应生成一个computed watcher。computed watcher是惰性的，不会马上执行watcher实例的get方法，watcher实例的get方法是依赖收集的一个关键方法，也就是说初始化computed的时候是没有做依赖收集的。</p>
+<p>当后面使用到computed属性时，如template模版中第一次使用到计算属性，会执行computed对应watcher的get方法。</p>
+<p>在这里插入对依赖管理器的介绍，帮助理解后续的过程。对于每一个被用到的响应式数据，都需要有一个dep实例来管理依赖这个数据的watcher。构造函数Dep有一个静态属性target，可以理解成一个全局变量，开始当前watcher的依赖收集的时候，就将当前依赖收集的watcher赋值给target。结束当前watcher的依赖收集的时候，将target赋值为watcher栈里的最上层的一个watcher。从上面的描述中可以看出，在做依赖收集的时候，是按watcher顺序执行来完成依赖收集的。</p>
+<p>在get方法中会将当前的watcher压入watcher栈中，并将依赖管理器Dep的静态属性target赋值为当前watcher。然后执行当前watcher实例的getter方法，也就是computed属性对应的计算方法，里面涉及到对响应式数据的取值操作，就会执行数据的getter方法（为了跟前面的get方法区别开，使用getter）。</p>
+<p>这里注意一下响应式数据，在执行initComputed之前，数据都是已经被数据劫持过的，使用的是Object.defineProperty方法。所以在对响应式数据取值的时候，才会执行数据的getter方法。</p>
+<p>在getter方法中，除了取值还做了依赖收集的工作。判断Dep.target是否存在，如果存在就执行dep实例的depend方法，而dep.depend方法中调用的是当前watcher的addDep方法。</p>
+<p>因为在前面的get方法中完成了computed watcher的压栈，所以这个时候的Dep.target是存在的，且值为computed watcher，会顺利执行到当前watcher的addDep方法。</p>
+<p>在watcher.addDep方法中做了两件事，通过id来避免了重复收集：</p>
+<ol>
+<li>判断当前的watcher是否有收集关于当前dep实例的信息，如果没有则收集到自己的属性中；</li>
+<li>判断当前的dep实例是否有收集当前watcher的信息，如果没有则收集到自己的属性中。</li>
+</ol>
+<p>watcher.addDep执行完成后，接着执行computed属性对应的计算方法，对使用到的响应式数据都完成依赖收集。完成依赖收集之后，将当前的watcher出栈。最后完成一个细节，遍历deps属性移除旧的订阅，更新为新的订阅。一些列操作完成之后，开始下一个watcher的依赖收集。</p>
+<h5 id="user-watcher"><a href="#user-watcher" class="headerlink" title="user watcher"></a>user watcher</h5><p>在初始化数据的时候， 如果组件中有使用watch监听属性，会执行initWatch方法，一个watch属性对应生成一个user watcher。创建user watcher实例之后，会马上执行实例的get方法。</p>
+<p>在get方法中也会将当前的watcher压入watcher栈中，并将依赖管理器Dep的静态属性target赋值为当前watcher。</p>
+<p>执行当前watcher实例的getter方法，这个getter方法是在创建实例的时候执行parsePath方法返回的一个方法，会从Vue实例中获取到当前watch属性的值。因为watch的属性都是响应式数据，所以取值的时候会执行数据的getter方法。</p>
+<p>在getter方法中，除了取值还做了依赖收集的工作。判断Dep.target是否存在，如果存在就执行dep实例的depend方法，而dep.depend方法中调用的是当前watcher的addDep方法。</p>
+<p>因为在前面的get方法中完成了user watcher的压栈，所以这个时候的Dep.target是存在的，且值为user watcher，会顺利执行到当前watcher的addDep方法。</p>
+<p>在watcher.addDep方法中做了两件事，通过id来避免了重复收集：</p>
+<ol>
+<li>判断当前的watcher是否有收集关于当前dep实例的信息，如果没有则收集到自己的属性中；</li>
+<li>判断当前的dep实例是否有收集当前watcher的信息，如果没有则收集到自己的属性中。</li>
+</ol>
+<p>watcher.addDep执行完成后，将当前的watcher出栈。最后也是完成一个细节，遍历deps属性移除旧的订阅，更新为新的订阅。一些列操作完成之后，开始下一个watcher的依赖收集。</p>
+<h5 id="render-watcher"><a href="#render-watcher" class="headerlink" title="render watcher"></a>render watcher</h5><p>初始化数据完成之后，对Vue实例进行挂载。将VNode渲染成DOM的方法作为创建watcher的第二个参数，创建了一个render watcher，一个组件实例对应一个render watcher。创建render watcher实例之后，会马上执行实例的get方法。</p>
+<p>在get方法中也会将当前的watcher压入watcher栈中，并将依赖管理器Dep的静态属性target赋值为当前watcher。</p>
+<p>执行当前watcher实例的getter方法，也就是将VNode渲染成DOM的方法（创建watcher实例时传入的第二个参数），在创建DOM的时候，需要对响应式数据进行取值，这就会执行数据的getter方法。</p>
+<p>在getter方法中，除了取值还做了依赖收集的工作。判断Dep.target是否存在，如果存在就执行dep实例的depend方法，而dep.depend方法中调用的是当前watcher的addDep方法。</p>
+<p>因为在前面的get方法中完成了render watcher的压栈，所以这个时候的Dep.target是存在的，且值为user watcher，会顺利执行到当前watcher的addDep方法。</p>
+<p>在watcher.addDep方法中做了两件事，通过id来避免了重复收集：</p>
+<ol>
+<li>判断当前的watcher是否有收集关于当前dep实例的信息，如果没有则收集到自己的属性中；</li>
+<li>判断当前的dep实例是否有收集当前watcher的信息，如果没有则收集到自己的属性中。</li>
+</ol>
+<p>watcher.addDep执行完成后，将当前的watcher出栈。最后也是完成一个细节，遍历deps属性移除旧的订阅，更新为新的订阅。一些列操作完成之后，开始下一个watcher的依赖收集。</p>
+<h4 id="差异"><a href="#差异" class="headerlink" title="差异"></a>差异</h4><p>这三种watcher的其实大同小异，主要差别在于两点：</p>
+<ol>
+<li>实例的get方法执行时机不一样；</li>
+<li>实例的getter方法不一样，可以根据需求自定义。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/" rel="tag"># 依赖收集</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/" rel="prev" title="Vue2.x的数组响应式">
+      <i class="fa fa-chevron-left"></i> Vue2.x的数组响应式
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84%E4%BA%8B%E4%BB%B6%E4%B8%AD%E5%BF%83/" rel="next" title="Vue2.x的事件中心">
+      Vue2.x的事件中心 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%94%B6%E9%9B%86%E8%BF%87%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">收集过程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#computed-watcher"><span class="nav-number">2.1.</span> <span class="nav-text">computed watcher</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#user-watcher"><span class="nav-number">2.2.</span> <span class="nav-text">user watcher</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#render-watcher"><span class="nav-number">2.3.</span> <span class="nav-text">render watcher</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B7%AE%E5%BC%82"><span class="nav-number">3.</span> <span class="nav-text">差异</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

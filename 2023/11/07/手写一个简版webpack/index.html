@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="实现目标将一个入口文件及其依赖js打包到一个出口文件。 注意：只是简单实现webpack的部分功能，目的是帮助理解webpack的打包流程。 webpack打包流程 初始化Compiler:  new Webpack(config)得到Compiler对象； 开始编译：调用Compiler对象run方法开始执行编译； 确定入口：根据配置中的entry找到所有入口文件； 编译模块：从入口文件出发，调">
+<meta property="og:type" content="article">
+<meta property="og:title" content="手写一个简版Webpack">
+<meta property="og:url" content="http://example.com/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="实现目标将一个入口文件及其依赖js打包到一个出口文件。 注意：只是简单实现webpack的部分功能，目的是帮助理解webpack的打包流程。 webpack打包流程 初始化Compiler:  new Webpack(config)得到Compiler对象； 开始编译：调用Compiler对象run方法开始执行编译； 确定入口：根据配置中的entry找到所有入口文件； 编译模块：从入口文件出发，调">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.766Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.766Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="webpack">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>手写一个简版Webpack | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          手写一个简版Webpack
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/webpack/" itemprop="url" rel="index"><span itemprop="name">webpack</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/" class="post-meta-item leancloud_visitors" data-flag-title="手写一个简版Webpack" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="实现目标"><a href="#实现目标" class="headerlink" title="实现目标"></a>实现目标</h3><p>将一个入口文件及其依赖js打包到一个出口文件。</p>
+<p>注意：只是简单实现webpack的部分功能，目的是帮助理解webpack的打包流程。</p>
+<h3 id="webpack打包流程"><a href="#webpack打包流程" class="headerlink" title="webpack打包流程"></a>webpack打包流程</h3><ol>
+<li>初始化Compiler:  new Webpack(config)得到Compiler对象；</li>
+<li>开始编译：调用Compiler对象run方法开始执行编译；</li>
+<li>确定入口：根据配置中的entry找到所有入口文件；</li>
+<li>编译模块：从入口文件出发，调用所有配置的Loader对模块进行编译，再找出该模块依赖的模块，递归直到所有的模块都被加载；</li>
+<li>完成模块编译：使用Loader编译完所有模块后，得到了每个模块被编译后的最终内容以及模块的依赖关系图；</li>
+<li>输出资源：根据入口和模块之间的依赖关系，组装成一个个包含多个模块的Chunk，再把每个Chunk转换成单独的文件加入到输出列表，这步是可以修改输出内容的最后机会。</li>
+</ol>
+<h3 id="具体实现"><a href="#具体实现" class="headerlink" title="具体实现"></a>具体实现</h3><h4 id="整体结构"><a href="#整体结构" class="headerlink" title="整体结构"></a>整体结构</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">|-- ToysWebpack</span><br><span class="line">    |-- config</span><br><span class="line">        |-- index.js 执行这个文件，开始打包</span><br><span class="line">        |-- webpack.prod.config.js 生产环境webpack打包配置</span><br><span class="line">        |-- webpack.test.config.js 测试环境webpack打包配置</span><br><span class="line">    |-- dist</span><br><span class="line">        |-- index.bundle.js 生产环境包</span><br><span class="line">        |-- index.test.js 测试环境包</span><br><span class="line">    |-- node_modules</span><br><span class="line">    |-- src 待打包的原始文件夹，出了两个环境的打包入口文件，其他都是依赖文件</span><br><span class="line">        |-- add.js </span><br><span class="line">        |-- error.js</span><br><span class="line">        |-- index.js 生产环境打包的入口文件</span><br><span class="line">        |-- log.js</span><br><span class="line">        |-- minus.js</span><br><span class="line">        |-- test.js 测试环境打包的入口文件</span><br><span class="line">    |-- webpack </span><br><span class="line">        |-- Compiler.js 打包主文件</span><br><span class="line">        |-- index.js webpack打包的开始执行文件</span><br><span class="line">        |-- parse.js 编译工具</span><br><span class="line">    |-- index.html 供打包后测试使用</span><br><span class="line">    |-- package-lock.json</span><br><span class="line">    |-- package.json 打包脚本写里面</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h4 id="package-json"><a href="#package-json" class="headerlink" title="package.json"></a>package.json</h4><p>debug - 调试脚本， test - 打测试环境包， prod - 打生产环境包</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;name&quot;</span>: <span class="string">&quot;toys_webpack&quot;</span>,</span><br><span class="line">  <span class="string">&quot;version&quot;</span>: <span class="string">&quot;1.0.0&quot;</span>,</span><br><span class="line">  <span class="string">&quot;description&quot;</span>: <span class="string">&quot;&quot;</span>,</span><br><span class="line">  <span class="string">&quot;main&quot;</span>: <span class="string">&quot;index.js&quot;</span>,</span><br><span class="line">  <span class="string">&quot;scripts&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;debug&quot;</span>: <span class="string">&quot;cross-env NODE_ENV=prod node --inspect-brk ./config/index.js &quot;</span>, </span><br><span class="line">    <span class="string">&quot;test&quot;</span>: <span class="string">&quot;cross-env NODE_ENV=test node ./config/index.js &quot;</span>,</span><br><span class="line">    <span class="string">&quot;prod&quot;</span>: <span class="string">&quot;cross-env NODE_ENV=prod node ./config/index.js &quot;</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;keywords&quot;</span>: [],</span><br><span class="line">  <span class="string">&quot;author&quot;</span>: <span class="string">&quot;&quot;</span>,</span><br><span class="line">  <span class="string">&quot;license&quot;</span>: <span class="string">&quot;ISC&quot;</span>,</span><br><span class="line">  <span class="string">&quot;devDependencies&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;@babel/core&quot;</span>: <span class="string">&quot;^7.15.0&quot;</span>,</span><br><span class="line">    <span class="string">&quot;@babel/parser&quot;</span>: <span class="string">&quot;^7.15.3&quot;</span>,</span><br><span class="line">    <span class="string">&quot;@babel/preset-env&quot;</span>: <span class="string">&quot;^7.15.0&quot;</span>,</span><br><span class="line">    <span class="string">&quot;@babel/traverse&quot;</span>: <span class="string">&quot;^7.15.0&quot;</span>,</span><br><span class="line">    <span class="string">&quot;cross-env&quot;</span>: <span class="string">&quot;^7.0.3&quot;</span>,</span><br><span class="line">    <span class="string">&quot;mkdirp&quot;</span>: <span class="string">&quot;^1.0.4&quot;</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h4 id="config文件夹"><a href="#config文件夹" class="headerlink" title="config文件夹"></a>config文件夹</h4><p>index.js：执行package.json里的脚本后会到这个文件</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> webpack = <span class="built_in">require</span>(<span class="string">&#x27;../webpack/index.js&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> env = process.<span class="property">env</span>.<span class="property">NODE_ENV</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 懒加载当前运行环境的打包配置</span></span><br><span class="line"><span class="keyword">const</span> optionsMap = &#123;</span><br><span class="line">    <span class="attr">prod</span>: <span class="function">() =&gt;</span> <span class="built_in">require</span>(<span class="string">&#x27;./webpack.prod.config.js&#x27;</span>),</span><br><span class="line">    <span class="attr">test</span>: <span class="function">() =&gt;</span> <span class="built_in">require</span>(<span class="string">&#x27;./webpack.test.config.js&#x27;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">const</span> options = optionsMap[env]()</span><br><span class="line"></span><br><span class="line"><span class="comment">// 给webpack函数传入打包配置，返回一个Compiler实例</span></span><br><span class="line"><span class="keyword">const</span> compiler = <span class="title function_">webpack</span>(options)</span><br><span class="line"><span class="comment">// 执行run方法开始编译打包</span></span><br><span class="line">compiler.<span class="title function_">run</span>()</span><br></pre></td></tr></table></figure>
+
+
+
+<p>webpack.prod.config.js：生产环境打包配置</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> path = <span class="built_in">require</span>(<span class="string">&#x27;path&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="variable language_">module</span>.<span class="property">exports</span> = &#123;</span><br><span class="line">    <span class="attr">entry</span>: <span class="string">&#x27;../src/index.js&#x27;</span>,</span><br><span class="line">    <span class="attr">output</span>: &#123;</span><br><span class="line">        <span class="attr">path</span>: path.<span class="title function_">resolve</span>(__dirname, <span class="string">&#x27;../dist&#x27;</span>),</span><br><span class="line">        <span class="attr">filename</span>: <span class="string">&#x27;index.bundle.js&#x27;</span>,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>webpack.test.config.js: 测试环境打包配置</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> path = <span class="built_in">require</span>(<span class="string">&#x27;path&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="variable language_">module</span>.<span class="property">exports</span> = &#123;</span><br><span class="line">    <span class="attr">entry</span>: <span class="string">&#x27;../src/test.js&#x27;</span>,</span><br><span class="line">    <span class="attr">output</span>: &#123;</span><br><span class="line">        <span class="attr">path</span>: path.<span class="title function_">resolve</span>(__dirname, <span class="string">&#x27;../dist&#x27;</span>),</span><br><span class="line">        <span class="attr">filename</span>: <span class="string">&#x27;index.test.js&#x27;</span>,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h4 id="src文件夹"><a href="#src文件夹" class="headerlink" title="src文件夹"></a>src文件夹</h4><h5 id="生产环境相关文件"><a href="#生产环境相关文件" class="headerlink" title="生产环境相关文件"></a>生产环境相关文件</h5><p>index.js: 入口文件</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; add &#125; <span class="keyword">from</span> <span class="string">&#x27;./add.js&#x27;</span></span><br><span class="line"><span class="keyword">import</span> &#123; log &#125; <span class="keyword">from</span> <span class="string">&#x27;./log.js&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="title function_">log</span>(<span class="title function_">add</span>(<span class="number">1</span>,<span class="number">2</span>))</span><br></pre></td></tr></table></figure>
+
+
+
+<p>add.js</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> <span class="title function_">add</span> = (<span class="params">a, b</span>) =&gt; a + b</span><br></pre></td></tr></table></figure>
+
+
+
+<p>log.js</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> log =  <span class="variable language_">console</span>.<span class="property">log</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="测试环境相关代码"><a href="#测试环境相关代码" class="headerlink" title="测试环境相关代码"></a>测试环境相关代码</h5><p>test.js: 入口文件</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; minus &#125; <span class="keyword">from</span> <span class="string">&#x27;./minus.js&#x27;</span></span><br><span class="line"><span class="keyword">import</span> &#123; error &#125; <span class="keyword">from</span> <span class="string">&#x27;./error.js&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="title function_">error</span>(<span class="title function_">minus</span>(<span class="number">1</span>,<span class="number">2</span>))</span><br></pre></td></tr></table></figure>
+
+
+
+<p>minus.js</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> <span class="title function_">minus</span> = (<span class="params">a, b</span>) =&gt; a - b</span><br></pre></td></tr></table></figure>
+
+
+
+<p>error.js</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> error =  <span class="variable language_">console</span>.<span class="property">error</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h4 id="webpack文件夹"><a href="#webpack文件夹" class="headerlink" title="webpack文件夹"></a>webpack文件夹</h4><h5 id="index-js"><a href="#index-js" class="headerlink" title="index.js"></a>index.js</h5><p>webpack打包的开始执行文件</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="title class_">Compiler</span> = <span class="built_in">require</span>(<span class="string">&#x27;./Compiler.js&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * ToysWebpack只做一件事：将入口文件及其依赖打包到出口文件</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">const</span> <span class="title function_">webpack</span> = (<span class="params">options</span>) =&gt; &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Compiler</span>(options)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="variable language_">module</span>.<span class="property">exports</span> = webpack</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="Compiler-js"><a href="#Compiler-js" class="headerlink" title="Compiler.js"></a>Compiler.js</h5><p>打包主文件</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> path = <span class="built_in">require</span>(<span class="string">&#x27;path&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> fs = <span class="built_in">require</span>(<span class="string">&#x27;fs&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> mkdirp = <span class="built_in">require</span>(<span class="string">&#x27;mkdirp&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> &#123; getAst, getDeps, getCode &#125; = <span class="built_in">require</span>(<span class="string">&#x27;./parse.js&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> &#123; entry &#125; = <span class="built_in">require</span>(<span class="string">&#x27;../config/webpack.prod.config.js&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Compiler</span> &#123;</span><br><span class="line">    <span class="title function_">constructor</span> (options) &#123;</span><br><span class="line">        <span class="comment">// 配置信息</span></span><br><span class="line">        <span class="variable language_">this</span>.<span class="property">options</span> = options</span><br><span class="line">        <span class="comment">// 所有依赖的容器</span></span><br><span class="line">        <span class="variable language_">this</span>.<span class="property">modules</span> = []</span><br><span class="line">        <span class="comment">// 入口文件绝对路径</span></span><br><span class="line">        <span class="variable language_">this</span>.<span class="property">entryFilePath</span> = path.<span class="title function_">resolve</span>(<span class="string">&#x27;config&#x27;</span>, options.<span class="property">entry</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 编译打包</span></span><br><span class="line">    run () &#123;</span><br><span class="line">        <span class="comment">// 开始第一次构建，得到入口文件的信息</span></span><br><span class="line">        <span class="keyword">const</span> fileInfo = <span class="variable language_">this</span>.<span class="title function_">build</span>(<span class="variable language_">this</span>.<span class="property">entryFilePath</span>)</span><br><span class="line">        <span class="comment">// 将入口文件的信息添加到容器</span></span><br><span class="line">        <span class="variable language_">this</span>.<span class="property">modules</span>.<span class="title function_">push</span>(fileInfo)</span><br><span class="line">        <span class="comment">// 遍历fileInfo的deps, 递归得到依赖文件的信息</span></span><br><span class="line">        <span class="variable language_">this</span>.<span class="property">modules</span>.<span class="title function_">forEach</span>(<span class="function"><span class="params">item</span> =&gt;</span> &#123;</span><br><span class="line">            <span class="comment">// 取出当前文件的所有依赖</span></span><br><span class="line">            <span class="keyword">const</span> deps = item.<span class="property">deps</span></span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">const</span> dep <span class="keyword">in</span> deps) &#123;</span><br><span class="line">                <span class="comment">/**</span></span><br><span class="line"><span class="comment">                 * dep: 依赖相对路径</span></span><br><span class="line"><span class="comment">                 * deps[dep]: 依赖绝对路径</span></span><br><span class="line"><span class="comment">                 * 得到依赖文件的信息</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                <span class="keyword">const</span> depFileInfo = <span class="variable language_">this</span>.<span class="title function_">build</span>(deps[dep])</span><br><span class="line">                <span class="comment">// 将处理过后的依赖信息添加到容器中，后面会遍历到完成下一层的递归</span></span><br><span class="line">                <span class="variable language_">this</span>.<span class="property">modules</span>.<span class="title function_">push</span>(depFileInfo)</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">// 整理依赖关系图</span></span><br><span class="line">        <span class="keyword">const</span> depsGraph =  <span class="variable language_">this</span>.<span class="property">modules</span>.<span class="title function_">reduce</span>(<span class="function">(<span class="params">graph, <span class="variable language_">module</span></span>) =&gt;</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> &#123;</span><br><span class="line">                ...graph,</span><br><span class="line">                [<span class="variable language_">module</span>.<span class="property">filePath</span>]: &#123;</span><br><span class="line">                    <span class="attr">deps</span>: <span class="variable language_">module</span>.<span class="property">deps</span>,</span><br><span class="line">                    <span class="attr">code</span>: <span class="variable language_">module</span>.<span class="property">code</span></span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, &#123;&#125;)</span><br><span class="line">        <span class="comment">// 生成输出文件</span></span><br><span class="line">        <span class="keyword">const</span> <span class="title function_">generate</span> = (<span class="params">depsGraph</span>) =&gt; &#123;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 定义一个匿名立即执行函数，确保里面的代码只能自己操作</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="keyword">const</span> bundle = <span class="string">`</span></span><br><span class="line"><span class="string">              (function(depsGraph)&#123;</span></span><br><span class="line"><span class="string">                // require目的：加载入口文件</span></span><br><span class="line"><span class="string">                function require(module)&#123;</span></span><br><span class="line"><span class="string">                    // 函数内部的require其实执行的是localRequire</span></span><br><span class="line"><span class="string">                    function localRequire(relativePath)&#123;</span></span><br><span class="line"><span class="string">                        // 找到要引入模块的绝对路径，通过require加载</span></span><br><span class="line"><span class="string">                        return require(depsGraph[module].deps[relativePath])</span></span><br><span class="line"><span class="string">                    &#125;</span></span><br><span class="line"><span class="string">                    // 定义暴露的对象，将来模块要暴露的内容都放在这里</span></span><br><span class="line"><span class="string">                    let exports = &#123;&#125;;</span></span><br><span class="line"><span class="string">                    (function(require, exports, code)&#123;</span></span><br><span class="line"><span class="string">                        eval(code)</span></span><br><span class="line"><span class="string">                    &#125;)(localRequire, exports, depsGraph[module].code);</span></span><br><span class="line"><span class="string">                    // 作为require的返回值返回出去</span></span><br><span class="line"><span class="string">                    return exports</span></span><br><span class="line"><span class="string">                &#125;</span></span><br><span class="line"><span class="string">                require(&#x27;<span class="subst">$&#123;<span class="variable language_">this</span>.entryFilePath&#125;</span>&#x27;)</span></span><br><span class="line"><span class="string">              &#125;)(<span class="subst">$&#123;<span class="built_in">JSON</span>.stringify(depsGraph)&#125;</span>)</span></span><br><span class="line"><span class="string">            `</span></span><br><span class="line">            <span class="comment">// 生成输出文件的绝对路径</span></span><br><span class="line">            <span class="keyword">const</span> &#123; <span class="attr">path</span>: outputPath, filename &#125; = <span class="variable language_">this</span>.<span class="property">options</span>.<span class="property">output</span></span><br><span class="line">            <span class="keyword">const</span> filePath = path.<span class="title function_">resolve</span>(outputPath, filename)</span><br><span class="line">            <span class="comment">// 写入文件</span></span><br><span class="line">            <span class="keyword">const</span> made = mkdirp.<span class="title function_">sync</span>(path.<span class="title function_">dirname</span>(filePath))</span><br><span class="line">            fs.<span class="title function_">writeFileSync</span>(filePath, bundle)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="title function_">generate</span>(depsGraph)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 开始构建</span></span><br><span class="line">    build (filePath) &#123;</span><br><span class="line">        <span class="comment">// 将入口文件解析ast</span></span><br><span class="line">        <span class="keyword">const</span> ast = <span class="title function_">getAst</span>(filePath)</span><br><span class="line">        <span class="comment">// 获取ast中所有的依赖</span></span><br><span class="line">        <span class="keyword">const</span> deps = <span class="title function_">getDeps</span>(filePath, ast)</span><br><span class="line">        <span class="comment">// 将ast解析成code</span></span><br><span class="line">        <span class="keyword">const</span> code = <span class="title function_">getCode</span>(ast)</span><br><span class="line">        <span class="keyword">return</span> &#123; </span><br><span class="line">            <span class="comment">// 文件路径</span></span><br><span class="line">            filePath,</span><br><span class="line">            <span class="comment">// 当前文件的所有依赖</span></span><br><span class="line">            deps,</span><br><span class="line">            <span class="comment">// 当前文件解析后的代码</span></span><br><span class="line">            code</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="variable language_">module</span>.<span class="property">exports</span> = <span class="title class_">Compiler</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="parse-js"><a href="#parse-js" class="headerlink" title="parse.js"></a>parse.js</h5><p>编译工具</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> fs = <span class="built_in">require</span>(<span class="string">&#x27;fs&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> path = <span class="built_in">require</span>(<span class="string">&#x27;path&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> &#123; parse &#125; = <span class="built_in">require</span>(<span class="string">&#x27;@babel/parser&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> traverse = <span class="built_in">require</span>(<span class="string">&#x27;@babel/traverse&#x27;</span>).<span class="property">default</span></span><br><span class="line"><span class="keyword">const</span> &#123; transformFromAstSync &#125; = <span class="built_in">require</span>(<span class="string">&#x27;@babel/core&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * tips:下面三步也是将ES6转化成ES5的核心步骤，</span></span><br><span class="line"><span class="comment"> * 当然在项目实践中不需要去这么转化，有封装得更易于使用的轮子。</span></span><br><span class="line"><span class="comment"> */</span> </span><br><span class="line"></span><br><span class="line"><span class="comment">//1. @babel/parser将es6的代码解析为AST</span></span><br><span class="line"><span class="keyword">const</span> <span class="title function_">getAst</span> = (<span class="params">filePath</span>) =&gt; &#123;</span><br><span class="line">    <span class="comment">// 同步读取文件</span></span><br><span class="line">    <span class="keyword">const</span> file = fs.<span class="title function_">readFileSync</span>(filePath, <span class="string">&#x27;utf-8&#x27;</span>)</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 调用parse方法将文件解析成AST</span></span><br><span class="line"><span class="comment">     * sourceType: 解析代码的模式，为module时可以解析ES6导入或导出语句</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">const</span> ast = <span class="title function_">parse</span>(file, &#123; <span class="attr">sourceType</span>: <span class="string">&quot;module&quot;</span> &#125;)</span><br><span class="line">    <span class="keyword">return</span> ast</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2.@babel/traverse遍历AST收集依赖</span></span><br><span class="line"><span class="keyword">const</span> <span class="title function_">getDeps</span> = (<span class="params">filePath, ast</span>) =&gt; &#123;</span><br><span class="line">    <span class="keyword">const</span> deps = &#123;&#125;</span><br><span class="line">    <span class="comment">// 获取文件所在文件夹的路径</span></span><br><span class="line">    <span class="keyword">const</span> dirname = path.<span class="title function_">dirname</span>(filePath)</span><br><span class="line">    <span class="comment">// 内部会遍历ast中的program.body，判断里面语句类型</span></span><br><span class="line">    <span class="title function_">traverse</span>(ast, &#123;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 当type为ImportDeclaration时，会执行下面的回调</span></span><br><span class="line"><span class="comment">         * 参数NodePath里存储了当前执行的语句的详细信息</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="title class_">ImportDeclaration</span>: <span class="function">(<span class="params">NodePath</span>) =&gt;</span> &#123;</span><br><span class="line">            <span class="comment">// 依赖的文件的相对路径</span></span><br><span class="line">            <span class="keyword">const</span> relativePath = <span class="title class_">NodePath</span>.<span class="property">node</span>.<span class="property">source</span>.<span class="property">value</span></span><br><span class="line">            <span class="comment">// 生成基于入口文件的绝对路径</span></span><br><span class="line">            <span class="keyword">const</span> absolutePath = path.<span class="title function_">resolve</span>(dirname, relativePath)</span><br><span class="line">            <span class="comment">// 添加依赖</span></span><br><span class="line">            deps[relativePath] = absolutePath</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">return</span> deps</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3.@bebel/core将AST解析为对应的es5代码</span></span><br><span class="line"><span class="keyword">const</span> <span class="title function_">getCode</span> = (<span class="params">ast</span>) =&gt; &#123;</span><br><span class="line">    <span class="keyword">const</span> &#123; code &#125; = <span class="title function_">transformFromAstSync</span>(ast, <span class="literal">null</span>, &#123;</span><br><span class="line">        <span class="attr">presets</span>: [<span class="string">&quot;@babel/preset-env&quot;</span>]</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">return</span> code</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="variable language_">module</span>.<span class="property">exports</span> = &#123;</span><br><span class="line">    getAst,</span><br><span class="line">    getDeps,</span><br><span class="line">    getCode</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h4 id="index-html"><a href="#index-html" class="headerlink" title="index.html"></a>index.html</h4><p>供打包后测试使用</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE <span class="keyword">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">lang</span>=<span class="string">&quot;en&quot;</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">charset</span>=<span class="string">&quot;UTF-8&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">http-equiv</span>=<span class="string">&quot;X-UA-Compatible&quot;</span> <span class="attr">content</span>=<span class="string">&quot;IE=edge&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">name</span>=<span class="string">&quot;viewport&quot;</span> <span class="attr">content</span>=<span class="string">&quot;width=device-width, initial-scale=1.0&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">title</span>&gt;</span>Document<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">&quot;./dist/index.bundle.js&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">&quot;./dist/index.test.js&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/webpack/" rel="tag"># webpack</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" rel="prev" title="webpack之前端性能优化">
+      <i class="fa fa-chevron-left"></i> webpack之前端性能优化
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/" rel="next" title="浏览器的进程和线程">
+      浏览器的进程和线程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0%E7%9B%AE%E6%A0%87"><span class="nav-number">1.</span> <span class="nav-text">实现目标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#webpack%E6%89%93%E5%8C%85%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">webpack打包流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">具体实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84"><span class="nav-number">3.1.</span> <span class="nav-text">整体结构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#package-json"><span class="nav-number">3.2.</span> <span class="nav-text">package.json</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#config%E6%96%87%E4%BB%B6%E5%A4%B9"><span class="nav-number">3.3.</span> <span class="nav-text">config文件夹</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#src%E6%96%87%E4%BB%B6%E5%A4%B9"><span class="nav-number">3.4.</span> <span class="nav-text">src文件夹</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="nav-number">3.4.1.</span> <span class="nav-text">生产环境相关文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81"><span class="nav-number">3.4.2.</span> <span class="nav-text">测试环境相关代码</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#webpack%E6%96%87%E4%BB%B6%E5%A4%B9"><span class="nav-number">3.5.</span> <span class="nav-text">webpack文件夹</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#index-js"><span class="nav-number">3.5.1.</span> <span class="nav-text">index.js</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Compiler-js"><span class="nav-number">3.5.2.</span> <span class="nav-text">Compiler.js</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#parse-js"><span class="nav-number">3.5.3.</span> <span class="nav-text">parse.js</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#index-html"><span class="nav-number">3.6.</span> <span class="nav-text">index.html</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

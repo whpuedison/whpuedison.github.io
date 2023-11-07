@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基本概念在研究浏览器的事件循环机制之前，先了解几个关键词。 执行栈同步任务都在主线程上执行，形成一个执行栈，可以认为是一个存储函数调用的栈结构，遵循后进先出的原则。 任务队列只要异步任务有了运行结果，就在任务队列中放置一个事件。异步任务分为宏任务macro-task和微任务micro-task，在es6中宏任务被称为task，微任务被称为jobs。宏任务会放置在宏任务队列，微任务会放置在微任务队列">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浏览器的事件循环机制">
+<meta property="og:url" content="http://example.com/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="基本概念在研究浏览器的事件循环机制之前，先了解几个关键词。 执行栈同步任务都在主线程上执行，形成一个执行栈，可以认为是一个存储函数调用的栈结构，遵循后进先出的原则。 任务队列只要异步任务有了运行结果，就在任务队列中放置一个事件。异步任务分为宏任务macro-task和微任务micro-task，在es6中宏任务被称为task，微任务被称为jobs。宏任务会放置在宏任务队列，微任务会放置在微任务队列">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.767Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.767Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="事件循环">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>浏览器的事件循环机制 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          浏览器的事件循环机制
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B5%8F%E8%A7%88%E5%99%A8/" itemprop="url" rel="index"><span itemprop="name">浏览器</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/" class="post-meta-item leancloud_visitors" data-flag-title="浏览器的事件循环机制" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><p>在研究浏览器的事件循环机制之前，先了解几个关键词。</p>
+<h5 id="执行栈"><a href="#执行栈" class="headerlink" title="执行栈"></a>执行栈</h5><p>同步任务都在主线程上执行，形成一个执行栈，可以认为是一个存储函数调用的栈结构，遵循后进先出的原则。</p>
+<h5 id="任务队列"><a href="#任务队列" class="headerlink" title="任务队列"></a>任务队列</h5><p>只要异步任务有了运行结果，就在任务队列中放置一个事件。异步任务分为宏任务macro-task和微任务micro-task，在es6中宏任务被称为task，微任务被称为jobs。宏任务会放置在宏任务队列，微任务会放置在微任务队列。</p>
+<h5 id="宏任务"><a href="#宏任务" class="headerlink" title="宏任务"></a>宏任务</h5><p>浏览器常见的宏任务：script（整体代码）、setTimeout、setInterval、setImmediate、UI render。</p>
+<h5 id="微任务"><a href="#微任务" class="headerlink" title="微任务"></a>微任务</h5><p>浏览器常见的微任务：Promise.then、Async/Await、MutationObserver（h5新特性）。</p>
+<h4 id="事件循环过程"><a href="#事件循环过程" class="headerlink" title="事件循环过程"></a>事件循环过程</h4><ol>
+<li>开始的时候执行栈和微任务队列为空，宏任务队列有且只有一个script脚本（整体代码）；</li>
+<li>执行栈中同步任务执行完毕后，系统会读取任务队列。只有宏任务队列有一个script脚本（整体代码）的异步任务，将该宏任务推入执行栈；</li>
+<li>执行过程中，遇到同步代码直接执行，生成宏任务添加到宏任务队列，生成微任务添加到微任务队列。等同步代码执行玩后，script脚本被移除宏任务队列，这个就是宏任务的执行和出队列的过程；</li>
+<li>执行完一个宏任务之后，接下来就是处理上一个宏任务执行过程中产生的微任务队列，逐个执行微任务并将任务出队，直到队列被清空。需要注意的是宏任务的执行和出队是一个一个执行的，而微任务的执行和出队是一队一队的；</li>
+<li>执行渲染操作，更新界面；</li>
+<li>上面过程循环往复，知道宏任务队列和微任务队列都清空。</li>
+</ol>
+<h4 id="举几个🌰"><a href="#举几个🌰" class="headerlink" title="举几个🌰"></a>举几个🌰</h4><h5 id="宏任务和微任务执行顺序"><a href="#宏任务和微任务执行顺序" class="headerlink" title="宏任务和微任务执行顺序"></a>宏任务和微任务执行顺序</h5><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="title class_">Promise</span>.<span class="title function_">resolve</span>().<span class="title function_">then</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;Promise1&#x27;</span>)</span><br><span class="line">    <span class="built_in">setTimeout</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">      <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;setTimeout2&#x27;</span>)</span><br><span class="line">    &#125;,<span class="number">0</span>)</span><br><span class="line">  &#125;)</span><br><span class="line">  <span class="built_in">setTimeout</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;setTimeout1&#x27;</span>)</span><br><span class="line">    <span class="title class_">Promise</span>.<span class="title function_">resolve</span>().<span class="title function_">then</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">      <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;Promise2&#x27;</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;,<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 执行顺序：Promise1 -&gt; setTimeout1 -&gt; Promise2 -&gt; setTimeout2</span></span><br></pre></td></tr></table></figure>
+
+<p>执行流程分析：</p>
+<p>整体代码是一个宏任务，将宏任务压入执行栈。执行过程中先生成了一个微任务简称为Promise1添加到微任务队列，后面又生成一个宏任务简称setTimeout1添加到宏任务队列。执行完这个整体代码的宏任务之后，将这个宏任务出队列。</p>
+<p>接下来就是执行上一个宏任务（整体代码）生成的微任务队列，开始执行Promise1。执行微任务p1的时候生成一个宏任务setTimeout2，将宏任务setTimeout2添加到宏任务队列，此时宏任务队列有setTimeout1和setTimeout2。</p>
+<p>微任务队列执行完成，执行宏任务队列最前面的宏任务setTimeout1，因为队列的原则是先进先出。在执行宏任务setTimeout1的时候，生成了微任务Promise2。执行完宏任务setTimeout1，将这个宏任务出队列。</p>
+<p>接下来就是执行上一个宏任务（setTimeout1）生成的微任务队列，开始执行Promise2。执行完微任务列队，再来执行宏任务里的唯一的一个宏任务setTimeout2。执行完宏任务setTimeout2，将这个宏任务出队列。此时宏任务和微任务队列都已清空，结束当前事件循环。</p>
+<p>⚠️微任务执行完也是会出列的。</p>
+<h5 id="Async-Await执行顺序"><a href="#Async-Await执行顺序" class="headerlink" title="Async/Await执行顺序"></a>Async/Await执行顺序</h5><blockquote>
+<p>科普知识：await下面的代码怎么执行？</p>
+<p>如果await后面跟同步函数的调用。相当于直接将await下面的代码注册为一个微任务，可简单理解为promise.then(await下面的代码)。然后跳出async函数，执行其他代码。</p>
+<p>如果await后面跟一个异步函数的调用，当await之后的函数中同步任务被执行，异步任务被添加到任务队列之后，直接跳出async函数，执行剩下代码，等剩下代码同步任务被执行，异步代码被添加到任务队列之后，再来将await下面的代码注册为一个微任务。</p>
+</blockquote>
+<h6 id="await后面跟同步函数的调用"><a href="#await后面跟同步函数的调用" class="headerlink" title="await后面跟同步函数的调用"></a>await后面跟同步函数的调用</h6><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;script start&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">function</span> <span class="title function_">async1</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="keyword">await</span> <span class="title function_">async2</span>()</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;async1 end&#x27;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">async</span> <span class="keyword">function</span> <span class="title function_">async2</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;async2 end&#x27;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="title function_">async1</span>()</span><br><span class="line"></span><br><span class="line"><span class="built_in">setTimeout</span>(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;setTimeout&#x27;</span>)</span><br><span class="line">&#125;, <span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">new</span> <span class="title class_">Promise</span>(<span class="function"><span class="params">resolve</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;Promise&#x27;</span>)</span><br><span class="line">    <span class="title function_">resolve</span>()</span><br><span class="line">&#125;)</span><br><span class="line">.<span class="title function_">then</span>(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;promise1&#x27;</span>)</span><br><span class="line">&#125;)</span><br><span class="line">.<span class="title function_">then</span>(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;promise2&#x27;</span>)</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;script end&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 执行结果： script start -&gt; async2 end -&gt; Promise -&gt; script end</span></span><br><span class="line"><span class="comment">// -&gt; async1 end -&gt; promise1 -&gt; promise2 -&gt; setTimeout</span></span><br></pre></td></tr></table></figure>
+
+<p>执行流程分析：</p>
+<ol>
+<li>整体代码是个宏任务压入执行栈执行，执行同步任务打印’script start’；</li>
+<li>执行async1时，await后面的函数可以当作同步任务执行，打印’async2 end’；</li>
+<li>因为async1中的await后面的函数并不是异步函数，所以可以直接将await下面的代码生成为一个微任务，并添加到微任务队列；</li>
+<li>代码往下执行生成一个setTimeout宏任务，将宏任务添加到宏任务队列；</li>
+<li>代码往下执行创建一个Promise实例。注意创建Promise实例时，参数是一个是以同步的方式执行的函数，直接打印’Promise’；</li>
+<li>代码往下执行生成promise1和promise2两个微任务，并按顺序加入微任务队列；</li>
+<li>执行同步任务打印’script end’，将全部代码这个宏任务出列；</li>
+<li>开始执行上一个宏任务生成的微任务队列，此时微任务队列里是三个微任务，分别是await下面的代码生成的微任务、promise1和promise2，依次执行出队列。结果是按顺序打印’async1 end’、’promise1’、 ‘promise2’；</li>
+<li>执行完微任务队列后，此时宏任务队列只有一个setTimeout宏任务；</li>
+<li>执行setTimeout宏任务，打印’setTimeout’，结束宏任务并将宏任务出列。此时宏任务和微任务队列都已清空，结束当前事件循环。</li>
+</ol>
+<h6 id="await后面跟异步函数的调用"><a href="#await后面跟异步函数的调用" class="headerlink" title="await后面跟异步函数的调用"></a>await后面跟异步函数的调用</h6><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;script start&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">function</span> <span class="title function_">async1</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="keyword">await</span> <span class="title function_">async2</span>()</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;async1 end&#x27;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">async</span> <span class="keyword">function</span> <span class="title function_">async2</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;async2 end&#x27;</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="title class_">Promise</span>.<span class="title function_">resolve</span>().<span class="title function_">then</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">        <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;async2 end1&#x27;</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br><span class="line"><span class="title function_">async1</span>()</span><br><span class="line"></span><br><span class="line"><span class="built_in">setTimeout</span>(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;setTimeout&#x27;</span>)</span><br><span class="line">&#125;, <span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">new</span> <span class="title class_">Promise</span>(<span class="function"><span class="params">resolve</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;Promise&#x27;</span>)</span><br><span class="line">    <span class="title function_">resolve</span>()</span><br><span class="line">&#125;)</span><br><span class="line">.<span class="title function_">then</span>(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;promise1&#x27;</span>)</span><br><span class="line">&#125;)</span><br><span class="line">.<span class="title function_">then</span>(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;promise2&#x27;</span>)</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;script end&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 执行结果： script start -&gt; async2 end -&gt; Promise -&gt; script end</span></span><br><span class="line"><span class="comment">//  -&gt; async2 end1 -&gt; promise1 -&gt; promise2 -&gt; async1 end -&gt; setTimeout</span></span><br></pre></td></tr></table></figure>
+
+<p>执行流程分析（跟上个🌰的流程差别，主要是await后面的代码执行时机，具体是步骤2、3、8）：</p>
+<ol>
+<li>整体代码是个宏任务压入执行栈执行，执行同步任务打印’script start’；</li>
+<li>执行async1时，await后面的函数可以当作同步任务执行。async2函数执行打印’async2 end’，生成一个微任务简称为Promise async2；</li>
+<li>因为async1中的await后面的函数是异步函数，所以直接跳出了async1函数；</li>
+<li>代码往下执行生成一个setTimeout宏任务，将宏任务添加到宏任务队列；</li>
+<li>代码往下执行创建一个Promise实例。注意创建Promise实例时，参数是一个是以同步的方式执行的函数，直接打印’Promise’；</li>
+<li>代码往下执行生成promise1和promise2两个微任务，并按顺序加入微任务队列；</li>
+<li>执行同步任务打印’script end’，再回到async1函数中将await下面的代码生成为一个微任务，并添加到微任务队列。此时本轮宏任务执行就执行完了，将全部代码这个宏任务出列；</li>
+<li>开始执行上一个宏任务生成的微任务队列，此时微任务队列里是三个微任务，分别是Promise async2、promise1、promise2和await下面的代码生成的微任务，依次执行出队列。结果是按顺序打印’async2 end1’、’promise1’、 ‘promise2’、’async1 end’；</li>
+<li>执行完微任务队列后，此时宏任务队列只有一个setTimeout宏任务；</li>
+<li>执行setTimeout宏任务，打印’setTimeout’，结束宏任务并将宏任务出列。此时宏任务和微任务队列都已清空，结束当前事件循环。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF/" rel="tag"># 事件循环</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/" rel="prev" title="浏览器的进程和线程">
+      <i class="fa fa-chevron-left"></i> 浏览器的进程和线程
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">基本概念</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%A0%88"><span class="nav-number">1.1.</span> <span class="nav-text">执行栈</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97"><span class="nav-number">1.2.</span> <span class="nav-text">任务队列</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%AE%8F%E4%BB%BB%E5%8A%A1"><span class="nav-number">1.3.</span> <span class="nav-text">宏任务</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%BE%AE%E4%BB%BB%E5%8A%A1"><span class="nav-number">1.4.</span> <span class="nav-text">微任务</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E8%BF%87%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">事件循环过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%BE%E5%87%A0%E4%B8%AA%F0%9F%8C%B0"><span class="nav-number">3.</span> <span class="nav-text">举几个🌰</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%AE%8F%E4%BB%BB%E5%8A%A1%E5%92%8C%E5%BE%AE%E4%BB%BB%E5%8A%A1%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F"><span class="nav-number">3.1.</span> <span class="nav-text">宏任务和微任务执行顺序</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Async-Await%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F"><span class="nav-number">3.2.</span> <span class="nav-text">Async&#x2F;Await执行顺序</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#await%E5%90%8E%E9%9D%A2%E8%B7%9F%E5%90%8C%E6%AD%A5%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8"><span class="nav-number">3.2.1.</span> <span class="nav-text">await后面跟同步函数的调用</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#await%E5%90%8E%E9%9D%A2%E8%B7%9F%E5%BC%82%E6%AD%A5%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8"><span class="nav-number">3.2.2.</span> <span class="nav-text">await后面跟异步函数的调用</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

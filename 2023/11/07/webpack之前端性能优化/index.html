@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="开发环境优化优化打包速度HMR模块热替换，一个模块发生变化，只会重新打包这一个文件，而不是打包所有文件，提升构建速度。  HTML文件：默认不能使用HMR功能，开启HMR功能之后会导致HTML文件不能热更新了。解决方法是修改entry入口，将HTML文件引入。  CSS文件：可以使用HMR功能，因为style-loader内部实现了。  JS文件：默认不能使用，得手动处理热替换。 1234567i">
+<meta property="og:type" content="article">
+<meta property="og:title" content="webpack之前端性能优化">
+<meta property="og:url" content="http://example.com/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="开发环境优化优化打包速度HMR模块热替换，一个模块发生变化，只会重新打包这一个文件，而不是打包所有文件，提升构建速度。  HTML文件：默认不能使用HMR功能，开启HMR功能之后会导致HTML文件不能热更新了。解决方法是修改entry入口，将HTML文件引入。  CSS文件：可以使用HMR功能，因为style-loader内部实现了。  JS文件：默认不能使用，得手动处理热替换。 1234567i">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.763Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.763Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="webpack">
+<meta property="article:tag" content="性能优化">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>webpack之前端性能优化 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          webpack之前端性能优化
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/webpack/" itemprop="url" rel="index"><span itemprop="name">webpack</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" class="post-meta-item leancloud_visitors" data-flag-title="webpack之前端性能优化" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/webpack%E4%B9%8B%E5%89%8D%E7%AB%AF%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="开发环境优化"><a href="#开发环境优化" class="headerlink" title="开发环境优化"></a>开发环境优化</h3><h4 id="优化打包速度"><a href="#优化打包速度" class="headerlink" title="优化打包速度"></a>优化打包速度</h4><h5 id="HMR"><a href="#HMR" class="headerlink" title="HMR"></a>HMR</h5><p>模块热替换，一个模块发生变化，只会重新打包这一个文件，而不是打包所有文件，提升构建速度。</p>
+<ol>
+<li><p>HTML文件：默认不能使用HMR功能，开启HMR功能之后会导致HTML文件不能热更新了。解决方法是修改entry入口，将HTML文件引入。</p>
+</li>
+<li><p>CSS文件：可以使用HMR功能，因为style-loader内部实现了。</p>
+</li>
+<li><p>JS文件：默认不能使用，得手动处理热替换。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="variable language_">module</span>.<span class="property">hot</span>) &#123;</span><br><span class="line">    <span class="comment">// 一旦module.hot为true，说明开启了HMR功能</span></span><br><span class="line">    <span class="variable language_">module</span>.<span class="property">hot</span>.<span class="title function_">accept</span>(<span class="string">&#x27;./XXX.js&#x27;</span>, <span class="function">() =&gt;</span> &#123;</span><br><span class="line">      <span class="comment">// 监听XXX.js文件的变化，执行下面逻辑代码</span></span><br><span class="line">      ...</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h4 id="优化代码调试"><a href="#优化代码调试" class="headerlink" title="优化代码调试"></a>优化代码调试</h4><h5 id="source-map"><a href="#source-map" class="headerlink" title="source-map"></a>source-map</h5><p>一种提供构建后代码到源代码映射的技术，如果构建后代码出错了，通过映射可以追踪源代码错误。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">组合方式：[inline-|hidden-|<span class="built_in">eval</span>-][nosources-][cheap-[<span class="variable language_">module</span>-]]source-map</span><br></pre></td></tr></table></figure>
+
+<p>开发环境推荐使用：eval-source-map / eval-cheap-module-source-map</p>
+<h3 id="生产环境优化"><a href="#生产环境优化" class="headerlink" title="生产环境优化"></a>生产环境优化</h3><h4 id="优化打包速度-1"><a href="#优化打包速度-1" class="headerlink" title="优化打包速度"></a>优化打包速度</h4><h5 id="oneof"><a href="#oneof" class="headerlink" title="oneof"></a>oneof</h5><p>找到了匹配的loader之后，后面的loader就不去匹配了，一个文件在oneOf里只会匹配一个loader。</p>
+<h5 id="babel缓存"><a href="#babel缓存" class="headerlink" title="babel缓存"></a>babel缓存</h5><p>开启缓存后，babel运行的结果会保存起来。如果js文件没有变化，就可以直接使用babel的缓存，不需要重新去编译。</p>
+<h5 id="多进程打包"><a href="#多进程打包" class="headerlink" title="多进程打包"></a>多进程打包</h5><p>可以使用thread-loader对后面的loader开启多进程打包。</p>
+<p>需要注意的是进程的启动大概600ms，通信也需要时间，只有消耗时间长的工作使用多进程打包才有优化效果，如babel-loader。</p>
+<h5 id="externals"><a href="#externals" class="headerlink" title="externals"></a>externals</h5><p>配置忽略打包的库，在入口文件中以CDN的方式引入，来优化打包速度。</p>
+<h5 id="dll"><a href="#dll" class="headerlink" title="dll"></a>dll</h5><p>将一些不常更新的第三方库单独打包，在构建的时候将第三方库打包后的文件引入，每次打包只打包项目自身的代码。</p>
+<h4 id="优化代码调试-1"><a href="#优化代码调试-1" class="headerlink" title="优化代码调试"></a>优化代码调试</h4><h5 id="source-map-1"><a href="#source-map-1" class="headerlink" title="source-map"></a>source-map</h5><p>生产环境隐藏源代码推荐使用：</p>
+<ol>
+<li>nosources-source-map 全部隐藏</li>
+<li>hidden-source-map 只隐藏源代码，会提示构建后代码错误信息</li>
+</ol>
+<p>生产环境不隐藏源代码推荐使用：source-map / cheap-module-source-map</p>
+<h5 id="缓存"><a href="#缓存" class="headerlink" title="缓存"></a>缓存</h5><p>在服务端将静态资源设置缓存时间，当用户在缓存时间内请求相同的静态文件的时候，会直接从cookie里去获取。这里的缓存方案，处理场景是在缓存时间内对静态资源有改动，使用户只从服务器获取改动的静态文件，没改动的文件还是从cookie里获取。</p>
+<p>打包文件名添加使用hash值，类似于打包文件版本号。文件hash值一旦改变，说明改文件有变动。</p>
+<ol>
+<li>hash：每次打包都会生成一个唯一hash值；</li>
+<li>chunkhash：打包来自于同一个入口，属于同一个chunk，就公用一个hash值；</li>
+<li>contenthash：根据文件内容生成hash值；</li>
+</ol>
+<h5 id="tree-shaking"><a href="#tree-shaking" class="headerlink" title="tree shaking"></a>tree shaking</h5><p>去除应用程序中没有用到的代码和库，让打包后的代码体积更小，从而提升程序执行速度。</p>
+<p>SideEffect: 让 webpack 去除 tree shaking 带来副作用的代码。</p>
+<p>使用方式：</p>
+<ol>
+<li>使用ES6 module（webpack4.X需要使用ES6 module，webpack5也支持CommonJS）</li>
+<li>开启生产模式</li>
+</ol>
+<h5 id="code-split"><a href="#code-split" class="headerlink" title="code split"></a>code split</h5><h6 id="optimization"><a href="#optimization" class="headerlink" title="optimization"></a>optimization</h6><ol>
+<li>可以将node-modules中代码单独打包成一个chunk最终输出；</li>
+<li>自动分析多入口chunk中，有没有公共文件，如果有会打包成单独的一个chunk。</li>
+</ol>
+<h6 id="import"><a href="#import" class="headerlink" title="import"></a>import</h6><p>import动态导入语法，能将某个文件单独打包成一个chunk。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 给打包文件重命名</span></span><br><span class="line"><span class="keyword">import</span>(<span class="comment">/* webpackChunkName: &#x27;XXX&#x27; */</span><span class="string">&#x27;./XXX.js&#x27;</span>)</span><br><span class="line">  .<span class="title function_">then</span>(<span class="function">() =&gt;</span> &#123;</span><br><span class="line">  	...</span><br><span class="line">	&#125;).<span class="title function_">catch</span>(<span class="function">() =&gt;</span> &#123;</span><br><span class="line">    ... </span><br><span class="line">  &#125;)</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="懒加载-预加载"><a href="#懒加载-预加载" class="headerlink" title="懒加载/预加载"></a>懒加载/预加载</h5><p>懒加载：使用的时候才去加载，优点是不白加载，缺点是如果加载文件体积过大会卡顿；</p>
+<p>预加载：当其他资源加载完了再去加载，优点是使用时流畅，缺点是兼容性不好。</p>
+<h5 id="PWA"><a href="#PWA" class="headerlink" title="PWA"></a>PWA</h5><p>一种理念，使用多种技术来增强webapp的功能，是网站的体验变得更好。能够模拟一些原生功能，如离线也可以访问。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/webpack/" rel="tag"># webpack</a>
+              <a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" rel="tag"># 性能优化</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84%E6%B4%BE%E5%8F%91%E6%9B%B4%E6%96%B0/" rel="prev" title="Vue2.x的派发更新">
+      <i class="fa fa-chevron-left"></i> Vue2.x的派发更新
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E7%89%88webpack/" rel="next" title="手写一个简版Webpack">
+      手写一个简版Webpack <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E4%BC%98%E5%8C%96"><span class="nav-number">1.</span> <span class="nav-text">开发环境优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E6%89%93%E5%8C%85%E9%80%9F%E5%BA%A6"><span class="nav-number">1.1.</span> <span class="nav-text">优化打包速度</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#HMR"><span class="nav-number">1.1.1.</span> <span class="nav-text">HMR</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E4%BB%A3%E7%A0%81%E8%B0%83%E8%AF%95"><span class="nav-number">1.2.</span> <span class="nav-text">优化代码调试</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#source-map"><span class="nav-number">1.2.1.</span> <span class="nav-text">source-map</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E4%BC%98%E5%8C%96"><span class="nav-number">2.</span> <span class="nav-text">生产环境优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E6%89%93%E5%8C%85%E9%80%9F%E5%BA%A6-1"><span class="nav-number">2.1.</span> <span class="nav-text">优化打包速度</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#oneof"><span class="nav-number">2.1.1.</span> <span class="nav-text">oneof</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#babel%E7%BC%93%E5%AD%98"><span class="nav-number">2.1.2.</span> <span class="nav-text">babel缓存</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%A4%9A%E8%BF%9B%E7%A8%8B%E6%89%93%E5%8C%85"><span class="nav-number">2.1.3.</span> <span class="nav-text">多进程打包</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#externals"><span class="nav-number">2.1.4.</span> <span class="nav-text">externals</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#dll"><span class="nav-number">2.1.5.</span> <span class="nav-text">dll</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E4%BB%A3%E7%A0%81%E8%B0%83%E8%AF%95-1"><span class="nav-number">2.2.</span> <span class="nav-text">优化代码调试</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#source-map-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">source-map</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%BC%93%E5%AD%98"><span class="nav-number">2.2.2.</span> <span class="nav-text">缓存</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#tree-shaking"><span class="nav-number">2.2.3.</span> <span class="nav-text">tree shaking</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#code-split"><span class="nav-number">2.2.4.</span> <span class="nav-text">code split</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#optimization"><span class="nav-number">2.2.4.1.</span> <span class="nav-text">optimization</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#import"><span class="nav-number">2.2.4.2.</span> <span class="nav-text">import</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%87%92%E5%8A%A0%E8%BD%BD-%E9%A2%84%E5%8A%A0%E8%BD%BD"><span class="nav-number">2.2.5.</span> <span class="nav-text">懒加载&#x2F;预加载</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#PWA"><span class="nav-number">2.2.6.</span> <span class="nav-text">PWA</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

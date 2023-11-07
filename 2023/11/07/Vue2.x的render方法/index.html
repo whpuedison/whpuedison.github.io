@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基本介绍render方法将Vue实例渲染成一个虚拟Node，在生成VNode的时候完成了渲染watcher的依赖的收集。 patch方法将VNode转换为真正的DOM节点。 前情提要在Vue实例挂载的时候，执行render方法来生成VNode。而在开发的时候，开发者大多数情况并不是自己手写的render函数，而是写的template模版或者el。在mounted的方法中，会将template模版编">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vue2.x的render方法">
+<meta property="og:url" content="http://example.com/2023/11/07/Vue2.x%E7%9A%84render%E6%96%B9%E6%B3%95/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="基本介绍render方法将Vue实例渲染成一个虚拟Node，在生成VNode的时候完成了渲染watcher的依赖的收集。 patch方法将VNode转换为真正的DOM节点。 前情提要在Vue实例挂载的时候，执行render方法来生成VNode。而在开发的时候，开发者大多数情况并不是自己手写的render函数，而是写的template模版或者el。在mounted的方法中，会将template模版编">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.760Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.760Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="render">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84render%E6%96%B9%E6%B3%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Vue2.x的render方法 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84render%E6%96%B9%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Vue2.x的render方法
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/vue/" itemprop="url" rel="index"><span itemprop="name">vue</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/Vue2.x%E7%9A%84render%E6%96%B9%E6%B3%95/" class="post-meta-item leancloud_visitors" data-flag-title="Vue2.x的render方法" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/Vue2.x%E7%9A%84render%E6%96%B9%E6%B3%95/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/Vue2.x%E7%9A%84render%E6%96%B9%E6%B3%95/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="基本介绍"><a href="#基本介绍" class="headerlink" title="基本介绍"></a>基本介绍</h4><p>render方法将Vue实例渲染成一个虚拟Node，在生成VNode的时候完成了渲染watcher的依赖的收集。</p>
+<p>patch方法将VNode转换为真正的DOM节点。</p>
+<h4 id="前情提要"><a href="#前情提要" class="headerlink" title="前情提要"></a>前情提要</h4><p>在Vue实例挂载的时候，执行render方法来生成VNode。而在开发的时候，开发者大多数情况并不是自己手写的render函数，而是写的template模版或者el。在mounted的方法中，会将template模版编译成render方法，如果是el会多一个步骤，得先从el中提取出template模版。</p>
+<h4 id="本集看点"><a href="#本集看点" class="headerlink" title="本集看点"></a>本集看点</h4><h5 id="render渲染VNode主要步骤"><a href="#render渲染VNode主要步骤" class="headerlink" title="render渲染VNode主要步骤"></a>render渲染VNode主要步骤</h5><ol>
+<li><p>将children参数规范化：由于生成VNode的参数中children必须是VNode类型的，而下面几种情况下children不符合条件，所以在根据参数实例化VNode之前需要将children规范化成一个类型为VNode的Array。</p>
+<ul>
+<li><p>render函数是编译生成的，理论上编译生成的children已经是VNode类型的，但是当组件是函数式组件时，返回的是一个数组而不是一个根结点，所以需要用Array.prototype.concat方法将整个children数组打平，让深度只有一层。</p>
+<p>⚠️只有这一种情况，调用simpleNormalizeChildren方法来实现children规范化。</p>
+</li>
+<li><ol>
+<li>render函数是用户手写的，当children只有一个基础类型节点的时候，会调用createTextVNode方法创建一个文本节点的VNode；</li>
+<li>render函数是手写的，当编译slot或者v-for的时候。</li>
+</ol>
+<p>⚠️只有这两种情况，调用normalizeChildren方法来实现children规范化。</p>
+</li>
+</ul>
+</li>
+<li><p>创建VNode实例</p>
+<p>为每一个html标签创建一个VNode，顺序是先子后父，从上到下。可以理解成按照标签闭合的顺序，依次创建VNode，一个template模版中的根标签生成的就是当前组件的VNode树，也称为VDOM。</p>
+<p>对tag进行判断，创建不同类型的VNode：</p>
+<ul>
+<li>如果是字符串类型且是内置的节点，直接创建普通VNode;</li>
+<li>如果是字符串类型且是已注册的组件名，则通过createComponent方法创建一个组件类型的VNode;</li>
+<li>如果是字符串类型，又不是上面两种情况，创建一个未知标签的VNode;</li>
+<li>如果是组件类型，则通过createComponent方法创建一个组件类型的VNode。</li>
+</ul>
+</li>
+</ol>
+<h5 id="创建组件类型VNode主要步骤"><a href="#创建组件类型VNode主要步骤" class="headerlink" title="创建组件类型VNode主要步骤"></a>创建组件类型VNode主要步骤</h5><p>render渲染VNode可能会生成3种类型的VNode：</p>
+<ol>
+<li>普通类型VNode;</li>
+<li>未知标签VNode;</li>
+<li>组件类型VNode。</li>
+</ol>
+<p>因为前面两种都比较简单，这里着重分析组件类型VNode。通过createComponent方法将组件渲染成VNode主要做了3个事情：</p>
+<ol>
+<li><p>构造子类构造函数：开发者在写组件的时候，通常都是创建一个普通的对象，Vue内部使用Vue.extend将这个普通对象做了扩展，使这个对象可以像Vue实例一样可以完成初始化、挂载、渲染等一系列功能。</p>
+<p>Vue.extend的作用是构造一个Vue的子类，使用一种非常经典的原型继承的方式把一个纯对象转换成了一个继承于Vue的构造器Sub并返回，然后对Sub对象本身扩展一些属性，如扩展options、添加全局API，并且对配置做一些初始化工作。</p>
+<p>最后对这个Sub构造函数做了缓存，避免多次执行Vue.extend的时候对同一个子组件重复构造。在执行父组件patch方法解析到组件VNode的时候，会触发子组件生命周期中的init hook，在init hook中开始对子组件进行挂载，再走到子组件初始化逻辑。</p>
+</li>
+</ol>
+<ol start="2">
+<li><p>安装组件钩子函数：将组件特有的几个钩子和Vue实例的生命周期钩子合并。</p>
+<p>在实例化Vue的时候，Vue的挂载是在初始化完成的时候，这个是一个同步的事件，有一个固定的地方可以执行这块逻辑，不需要钩子函数来回调Vue的挂载操作。</p>
+<p>而子组件的挂载时机，是在父组件patch的过程中。子组件为了更好的管理自己的生命周期，添加了init、prepatch、insert和destroy四个生命周期钩子，分别对应初始化、更新、挂载完成、销毁。</p>
+<p>在父组件VNode执行执行patch的时候会执行上面的钩子函数，这就可以实现组件的渲染。这里需要注意的一点是Vue实例原有的几种生命钩子是可以正常使用的，如mounted钩子函数会在insert钩子执行的时候被调用。</p>
+</li>
+</ol>
+<ol start="3">
+<li><p>实例化VNode：实例化一个VNode，不过需要注意的是组件的VNode是没有children的。因为父组件render方法中，是看不到子组件内部结构的，只会为子组件生成一个组件VNode。</p>
+<p>父组件render方法生成VDOM之后，会执行到patch方法，在patch过程中会将子组件当作一个新的Vue实例，重新进行初始化、render生成VDOM，在这个子组件render方法生成的VDOM中，才会有children。</p>
+<p>也就是说render方法在解析子组件的时候，只会将子组件生成一个组件VNode，不会关心子组件是否有子组件，子组件是否有子组件，这个事情由子组件来关心。</p>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/render/" rel="tag"># render</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Node%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/" rel="prev" title="Node的事件循环机制">
+      <i class="fa fa-chevron-left"></i> Node的事件循环机制
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84patch%E6%96%B9%E6%B3%95/" rel="next" title="Vue2.x的patch方法">
+      Vue2.x的patch方法 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.</span> <span class="nav-text">基本介绍</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%89%8D%E6%83%85%E6%8F%90%E8%A6%81"><span class="nav-number">2.</span> <span class="nav-text">前情提要</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%AC%E9%9B%86%E7%9C%8B%E7%82%B9"><span class="nav-number">3.</span> <span class="nav-text">本集看点</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#render%E6%B8%B2%E6%9F%93VNode%E4%B8%BB%E8%A6%81%E6%AD%A5%E9%AA%A4"><span class="nav-number">3.1.</span> <span class="nav-text">render渲染VNode主要步骤</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E7%BB%84%E4%BB%B6%E7%B1%BB%E5%9E%8BVNode%E4%B8%BB%E8%A6%81%E6%AD%A5%E9%AA%A4"><span class="nav-number">3.2.</span> <span class="nav-text">创建组件类型VNode主要步骤</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="数组响应式的限制Vue对数组响应式的处理可以分为两个方面来理解：  对数组项的以下7个操作方法做了重写，当数组使用下面方法改变了数组的值，Vue会派发更新通知依赖数组的watcher。 push  pop  shift  unshift  splice  sort  reverse   数组项的值如果是对象，会对对象属性进行数据劫持实现响应式，完全走的就是对普通对象属性进行依赖收集，派发更新那一套">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vue2.x的数组响应式">
+<meta property="og:url" content="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/index.html">
+<meta property="og:site_name" content="上任鹅城">
+<meta property="og:description" content="数组响应式的限制Vue对数组响应式的处理可以分为两个方面来理解：  对数组项的以下7个操作方法做了重写，当数组使用下面方法改变了数组的值，Vue会派发更新通知依赖数组的watcher。 push  pop  shift  unshift  splice  sort  reverse   数组项的值如果是对象，会对对象属性进行数据劫持实现响应式，完全走的就是对普通对象属性进行依赖收集，派发更新那一套">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-07T03:36:00.761Z">
+<meta property="article:modified_time" content="2023-11-07T03:36:00.761Z">
+<meta property="article:author" content="马帅傅">
+<meta property="article:tag" content="数组">
+<meta property="article:tag" content="响应式">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Vue2.x的数组响应式 | 上任鹅城</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">上任鹅城</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="马帅傅">
+      <meta itemprop="description" content="道阻且长,行则将至">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="上任鹅城">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Vue2.x的数组响应式
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-07 11:36:00" itemprop="dateCreated datePublished" datetime="2023-11-07T11:36:00+08:00">2023-11-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/vue/" itemprop="url" rel="index"><span itemprop="name">vue</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/" class="post-meta-item leancloud_visitors" data-flag-title="Vue2.x的数组响应式" title="Views">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine: </span>
+    
+    <a title="valine" href="/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2023/11/07/Vue2.x%E7%9A%84%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="数组响应式的限制"><a href="#数组响应式的限制" class="headerlink" title="数组响应式的限制"></a>数组响应式的限制</h4><p>Vue对数组响应式的处理可以分为两个方面来理解：</p>
+<ol>
+<li>对数组项的以下7个操作方法做了重写，当数组使用下面方法改变了数组的值，Vue会派发更新通知依赖数组的watcher。<ul>
+<li>push</li>
+<li> pop</li>
+<li> shift</li>
+<li> unshift</li>
+<li> splice</li>
+<li> sort</li>
+<li> reverse</li>
+</ul>
+</li>
+<li>数组项的值如果是对象，会对对象属性进行数据劫持实现响应式，完全走的就是对普通对象属性进行依赖收集，派发更新那一套流程。</li>
+</ol>
+<p>Vue中不能检测以下数组的变动：</p>
+<ol>
+<li>利用索引直接设置一个数组项；</li>
+<li>修改数组的长度。</li>
+</ol>
+<p>Vue中的数据响应式，实际上是通过对对象属性进行的数据劫持，而且无论是数组还是对象，响应式都是在初始化的时候完成的。Vue希望开发者可以提前声明所有的响应式属性，可以让响应式更可控。</p>
+<ol>
+<li><p>数组项并不是一个对象的属性，在Vue中是不具有响应式的，在对这个数组项直接赋值的时候，数组值会改变，但并不会触发数组的setter方法。</p>
+<p>⚠️如果这个数组项的值是一个对象，那这个对象里面的属性值是响应式的。</p>
+</li>
+<li><p>修改数组的长度，数组值会改变，但并不会触发数组的setter方法。新数组中只有数组项里还存在的对象属性是响应式的。</p>
+</li>
+</ol>
+<p>与其说Vue不能检测上面两种方式的变化，不如说Vue不想检测，尤大给的原因是性能代价和获得的用户体验收益不成正比。其实也好理解，对数据项直接赋值和修改数组的长度这两种方式都太不可控了。</p>
+<h4 id="数组响应式的实现"><a href="#数组响应式的实现" class="headerlink" title="数组响应式的实现"></a>数组响应式的实现</h4><p>在对数组类型的数据进行响应式处理之前，先往数组上绑定了数原型上有的一些方法和属性。这些方法和属性中有7个方法是被Vue做了重写的。因为这7个方法会改变数组本身的值，而Vue根本就没有对数组项这个维度进行响应式处理，所以不会触发数组的setter方法。</p>
+<p>为了处理这种情况，使数组在用的这7种方法改变值的时候会触发依赖更新，Vue将这几个方法做了一个重写。</p>
+<p>其中pop、shift、sort、reverse四个方法，因为没有添加数组项，所以重写的步骤很简单，就是执行方法、手动派发更新和返回方法的结果值。</p>
+<p>而push、unshift和splice方法因为添加了数据项，所以重写的步骤多了一项，简单来讲就是执行方法、将新增的数据项进行响应式处理、手动派发更新和返回方法的结果值。</p>
+<p>往目标数组中绑定这些方法和属性时，根据浏览器是否支持__proto__，分为了两种处理方法。</p>
+<ol>
+<li>支持__proto__：调用protoAugment方法通过原型式继承的方式，将目标数组的原型指向改造后的数组的实例，这个实例中既有数组的所有属性和方法，又有重写了的7个方法，这种方式是将方法和属性绑定在目标的原型链上。</li>
+<li>不支持__proto__：调用copyAugment方法，通过def函数，遍历改造后的数组实例，将方法和属性挂在到目标数组的属性上。</li>
+</ol>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>出于对性能的考虑，没有直接用Object.defineProperty去监听数组，但是需要知道Object.defineProperty是具备这个能力的。Vue2.x通过对常见的7种方法进行了重写，来实现对数组项的监听。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E7%BB%84/" rel="tag"># 数组</a>
+              <a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/" rel="tag"># 响应式</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84Virtual%20DOM/" rel="prev" title="Vue2.x的Virtual DOM">
+      <i class="fa fa-chevron-left"></i> Vue2.x的Virtual DOM
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/07/Vue2.x%E7%9A%84%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86/" rel="next" title="Vue2.x的依赖收集">
+      Vue2.x的依赖收集 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F%E7%9A%84%E9%99%90%E5%88%B6"><span class="nav-number">1.</span> <span class="nav-text">数组响应式的限制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E7%BB%84%E5%93%8D%E5%BA%94%E5%BC%8F%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">数组响应式的实现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">3.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="马帅傅"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">马帅傅</p>
+  <div class="site-description" itemprop="description">道阻且长,行则将至</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">马帅傅</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'CvwUY722HB1rJt3XHzcbMEOc-gzGzoHsz',
+      appKey     : 'vsP2YzUdTWIWI9gdYB9UhhUr',
+      placeholder: "Just go go",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : true,
+      lang       : 'zh-cn' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
